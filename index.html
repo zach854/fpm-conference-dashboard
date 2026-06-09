@@ -73,7 +73,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .budget-bar .bstatus{font-size:13px;font-weight:700;margin-left:4px;}
 .over{color:var(--red);} .under{color:var(--green);} .neutral{color:var(--muted);}
 .spons-bar{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:9px 14px;margin-bottom:14px;flex-wrap:wrap;}
-.spons-bar label{font-size:13px;font-weight:600;color:var(--green);white-space:nowrap;}
+.spons-bar label{font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;}
 .spons-bar input{padding:4px 10px;border:1px solid #86efac;border-radius:5px;font-size:13px;width:130px;}
 .spons-note{font-size:12px;color:var(--muted);margin-left:4px;}
 .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
@@ -342,7 +342,7 @@ function buildSidebar() {
     const badges = yrs.map(y => `<span class="badge b${String(y).slice(-2)}">${y}</span>`).join('');
     const totalAll = c.rows.reduce((s,r)=>s+r.total,0);
     const spons = getSponsorshipForConf(c.key);
-    const net = totalAll - spons;
+    const net = totalAll + spons;
     return `<div class="conf-item" id="ci-${c.key.replace(/\s+/g,'_')}" onclick="showConf('${c.key.replace(/'/g,"\\'")}')"> 
       <div class="conf-name">${c.key}</div>
       <div class="conf-meta">${badges}<span>${fmtN(net)} net</span></div>
@@ -387,7 +387,7 @@ function showOverview() {
     const numConfs = confs.length;
     const numReports = displayData.length;
     const totalSponsYear = Object.keys(sponsorships).filter(k=>k.endsWith('__'+activeYear)).reduce((s,k)=>s+(parseFloat(sponsorships[k])||0),0);
-    const netTotal = displayTotal - totalSponsYear;
+    const netTotal = displayTotal + totalSponsYear;
     statsHtml = `
       <div class="stat-card"><div class="stat-label">${activeYear} Conferences</div><div class="stat-value">${numConfs}</div><div class="stat-sub">${numReports} attendee reports</div></div>
       <div class="stat-card"><div class="stat-label">${activeYear} Total Spend</div><div class="stat-value">${fmtN(displayTotal)}</div><div class="stat-sub">all conference costs</div></div>
@@ -405,17 +405,17 @@ function showOverview() {
     <div class="panel">
       <h3>All Conferences — Summary${activeYear ? ' ('+activeYear+')' : ''}</h3>
       <table>
-        <thead><tr><th>Conference</th><th class="money">2025 Spend</th><th class="money">2026 Spend</th><th class="money">Sponsorships</th><th class="money">Net Cost</th><th>Years</th></tr></thead>
+        <thead><tr><th>Conference</th><th class="money">2025 Spend</th><th class="money">2026 Spend</th><th class="money">Sponsorship Fees</th><th class="money">Net Cost</th><th>Years</th></tr></thead>
         <tbody>${confs.map(c=>{
           const t25=totalByYear(c.rows,2025), t26=totalByYear(c.rows,2026);
           const totalAll=c.rows.reduce((s,r)=>s+r.total,0);
           const spons=getSponsorshipForConf(c.key);
-          const net=totalAll-spons;
+          const net=totalAll+spons;
           return `<tr onclick="showConf('${c.key.replace(/'/g,"\\'")}");" style="cursor:pointer">
             <td><strong>${c.key}</strong></td>
             <td class="money">${t25>0?fmtN(t25):'—'}</td>
             <td class="money">${t26>0?fmtN(t26):'—'}</td>
-            <td class="money green-text">${spons>0?fmtN(spons):'—'}</td>
+            <td class="money" style="color:var(--accent)">${spons>0?fmtN(spons):'—'}</td>
             <td class="money"><strong>${fmtN(net)}</strong></td>
             <td>${[...c.years].sort().map(y=>`<span class="badge b${String(y).slice(-2)}">${y}</span>`).join(' ')}</td>
           </tr>`;
@@ -470,7 +470,7 @@ function showConf(key) {
   const totMileage = rows.reduce((s,r)=>s+r.mileage,0);
   const totOther = totExpenses - totAir - totMeals - totMileage;
   const lastYrTotal = byYear.length > 0 ? byYear[byYear.length-1].total : 0;
-  const netLastYr = lastYrTotal - spons;
+  const netLastYr = lastYrTotal + spons;
 
   let bStatusHtml = '';
   if (budget > 0) {
@@ -490,7 +490,7 @@ function showConf(key) {
         <span>&#128197; ${years.join(', ')}</span>
         <span>&#128101; ${attendees.slice(0,3).join(', ')}${attendees.length>3?' +'+(attendees.length-3)+' more':''}</span>
         <span>&#128176; ${fmtN(totalAll)} total spend</span>
-        ${spons > 0 ? `<span style="color:var(--green)">&#128181; ${fmtN(spons)} sponsored (${lastYear})</span>` : ''}
+        ${spons > 0 ? `<span style="color:var(--accent)">&#128181; ${fmtN(spons)} sponsorship fee (${lastYear})</span>` : ''}
       </div>
       <div class="detail-actions">
         <button class="btn btn-ai" onclick="openPlanModal('${safeKey}')">&#10024; Plan for Next Year</button>
@@ -505,9 +505,10 @@ function showConf(key) {
     </div>
 
     <div class="spons-bar">
-      <label>&#128181; Sponsorship received (${lastYear}):</label>
-      <input type="number" id="sponsInput" placeholder="$0.00" value="${spons||''}" oninput="updateSponsorship('${safeKey}', ${lastYear}, this.value)">
-      <span class="spons-note">reduces net cost; saved across sessions</span>
+      <label>&#128181; Conference sponsorship fee (${lastYear}):</label>
+      <input type="number" id="sponsInput" placeholder="$0.00" value="${spons||''}">
+      <button class="btn btn-primary" style="padding:5px 14px;font-size:13px" onclick="saveSponsorship('${safeKey}', ${lastYear}, document.getElementById('sponsInput').value);this.textContent='Saved ✓';setTimeout(()=>this.textContent='Save',1500)">Save</button>
+      <span class="spons-note" id="sponsNote">${spons>0?'Saved: '+fmtN(spons)+' — adds to total cost':'adds to total cost; save to persist'}</span>
     </div>
 
     <div class="detail-grid">
@@ -746,8 +747,8 @@ function renderAdminSponsTab(body) {
   const sponsorships = getSponsorships();
   body.innerHTML = `
     <div class="admin-section">
-      <h3>Sponsorship Amounts</h3>
-      <p>Enter the sponsorship amount FPM received for each conference and year. This reduces the net cost shown in the dashboard and is saved across sessions.</p>
+      <h3>Conference Sponsorship Fees</h3>
+      <p>Enter the sponsorship fee FPM paid to each conference. This is added to the total cost. Click Save on each row — the value persists until you update it again.</p>
       <table style="max-width:600px">
         <thead><tr><th>Conference</th><th>Year</th><th class="money">Sponsorship Amount</th></tr></thead>
         <tbody>
