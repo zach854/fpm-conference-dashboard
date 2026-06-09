@@ -195,6 +195,7 @@ tr:hover td{background:var(--bg);}
     <div class="admin-tab" id="atab1" onclick="switchAdminTab(1)">&#128181; Sponsorships</div>
     <div class="admin-tab" id="atab2" onclick="switchAdminTab(2)">&#128202; Budgets</div>
     <div class="admin-tab" id="atab3" onclick="switchAdminTab(3)">&#128196; Data Review</div>
+    <div class="admin-tab" id="atab4" onclick="switchAdminTab(4)">&#127919; Leads</div>
   </div>
   <div class="admin-body" id="adminBody"></div>
 </div>
@@ -250,6 +251,8 @@ function getSponsorships() { return lsGet('fpm_sponsorships', {}); }
 function saveSponsorships(v) { lsSet('fpm_sponsorships', v); }
 function getBudgetsLS() { return lsGet('fpm_budgets', {}); }
 function saveBudgetsLS(v) { lsSet('fpm_budgets', v); }
+function getLeads() { return lsGet('fpm_leads', {}); }
+function saveLeads(v) { lsSet('fpm_leads', v); }
 
 // ─── YEAR FILTER ──────────────────────────────────────────────
 let activeYear = null;
@@ -375,24 +378,29 @@ function showOverview() {
   const totalSpons = Object.values(sponsorships).reduce((s,v)=>s+(parseFloat(v)||0),0);
   const displayTotal = displayData.reduce((s,r)=>s+r.total,0);
   const byConf = confs.map(c=>({key:c.key, total:c.rows.reduce((s,r)=>s+r.total,0), spons:getSponsorshipForConf(c.key)})).sort((a,b)=>b.total-a.total);
+  const leads = getLeads();
+  const totalLeads = Object.values(leads).reduce((s,v)=>s+(parseInt(v)||0),0);
 
   let statsHtml = '';
   if (!activeYear) {
+    const leads25 = Object.keys(leads).filter(k=>k.endsWith('__2025')).reduce((s,k)=>s+(parseInt(leads[k])||0),0);
+    const leads26 = Object.keys(leads).filter(k=>k.endsWith('__2026')).reduce((s,k)=>s+(parseInt(leads[k])||0),0);
     statsHtml = `
       <div class="stat-card"><div class="stat-label">Total Conferences</div><div class="stat-value">${confs.length}</div><div class="stat-sub">across 2025–2026</div></div>
       <div class="stat-card"><div class="stat-label">2025 Total Spend</div><div class="stat-value">${fmtN(total25)}</div><div class="stat-sub">${events25} unique conferences, ${d25.length} reports</div></div>
       <div class="stat-card"><div class="stat-label">2026 Total Spend</div><div class="stat-value">${fmtN(total26)}</div><div class="stat-sub">${events26} unique conferences, ${d26.length} reports</div></div>
-      <div class="stat-card"><div class="stat-label">YoY Change</div><div class="stat-value" style="color:${total26>total25?'var(--red)':'var(--green)'}">${total26>total25?'▲':'▼'} ${Math.abs(Math.round((total26-total25)/total25*100))}%</div><div class="stat-sub">${total26>total25?'increase':'decrease'} from 2025</div></div>`;
+      <div class="stat-card" style="cursor:pointer" onclick="openAdmin();switchAdminTab(4)" title="Click to add leads in Admin"><div class="stat-label">&#127919; Total Leads</div><div class="stat-value" style="color:var(--accent)">${totalLeads||'—'}</div><div class="stat-sub">${leads25?leads25+' in 2025':''}${leads25&&leads26?' · ':''}${leads26?leads26+' in 2026':''}${!totalLeads?'click to enter leads':''}</div></div>`;
   } else {
     const numConfs = confs.length;
     const numReports = displayData.length;
     const totalSponsYear = Object.keys(sponsorships).filter(k=>k.endsWith('__'+activeYear)).reduce((s,k)=>s+(parseFloat(sponsorships[k])||0),0);
     const netTotal = displayTotal + totalSponsYear;
+    const leadsYear = Object.keys(leads).filter(k=>k.endsWith('__'+activeYear)).reduce((s,k)=>s+(parseInt(leads[k])||0),0);
     statsHtml = `
       <div class="stat-card"><div class="stat-label">${activeYear} Conferences</div><div class="stat-value">${numConfs}</div><div class="stat-sub">${numReports} attendee reports</div></div>
       <div class="stat-card"><div class="stat-label">${activeYear} Total Spend</div><div class="stat-value">${fmtN(displayTotal)}</div><div class="stat-sub">all conference costs</div></div>
-      <div class="stat-card"><div class="stat-label">Sponsorships (${activeYear})</div><div class="stat-value" style="color:var(--green)">${fmtN(totalSponsYear)}</div><div class="stat-sub">revenue received</div></div>
-      <div class="stat-card"><div class="stat-label">Net Cost (${activeYear})</div><div class="stat-value">${fmtN(netTotal)}</div><div class="stat-sub">after sponsorships</div></div>`;
+      <div class="stat-card"><div class="stat-label">Net Cost (${activeYear})</div><div class="stat-value">${fmtN(netTotal)}</div><div class="stat-sub">after sponsorships</div></div>
+      <div class="stat-card" style="cursor:pointer" onclick="openAdmin();switchAdminTab(4)" title="Click to add leads in Admin"><div class="stat-label">&#127919; ${activeYear} Leads</div><div class="stat-value" style="color:var(--accent)">${leadsYear||'—'}</div><div class="stat-sub">${leadsYear?'potential partners':'click to enter leads'}</div></div>`;
   }
 
   const mc = document.getElementById('mainContent');
@@ -405,18 +413,20 @@ function showOverview() {
     <div class="panel">
       <h3>All Conferences — Summary${activeYear ? ' ('+activeYear+')' : ''}</h3>
       <table>
-        <thead><tr><th>Conference</th><th class="money">2025 Spend</th><th class="money">2026 Spend</th><th class="money">Sponsorship Fees</th><th class="money">Net Cost</th><th>Years</th></tr></thead>
+        <thead><tr><th>Conference</th><th class="money">2025 Spend</th><th class="money">2026 Spend</th><th class="money">Sponsorship Fees</th><th class="money">Net Cost</th><th style="text-align:center">&#127919; Leads</th><th>Years</th></tr></thead>
         <tbody>${confs.map(c=>{
           const t25=totalByYear(c.rows,2025), t26=totalByYear(c.rows,2026);
           const totalAll=c.rows.reduce((s,r)=>s+r.total,0);
           const spons=getSponsorshipForConf(c.key);
           const net=totalAll+spons;
+          const confLeads = Object.keys(leads).filter(k=>k.startsWith(c.key+'__')).reduce((s,k)=>s+(parseInt(leads[k])||0),0);
           return `<tr onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="cursor:pointer">
             <td><strong>${c.key}</strong></td>
             <td class="money">${t25>0?fmtN(t25):'—'}</td>
             <td class="money">${t26>0?fmtN(t26):'—'}</td>
             <td class="money" style="color:var(--accent)">${spons>0?fmtN(spons):'—'}</td>
             <td class="money"><strong>${fmtN(net)}</strong></td>
+            <td style="text-align:center;font-weight:600;color:${confLeads>0?'var(--accent)':'var(--muted)'}">${confLeads||'—'}</td>
             <td>${[...c.years].sort().map(y=>`<span class="badge b${String(y).slice(-2)}">${y}</span>`).join(' ')}</td>
           </tr>`;
         }).join('')}</tbody>
@@ -428,8 +438,8 @@ function showOverview() {
     ? {labels:['2025','2026'], data:[total25,total26], colors:['#f8182d','#6366f1']}
     : {labels:[String(activeYear)], data:[displayTotal], colors:['#f8182d']};
   charts.years = new Chart(document.getElementById('chartYears'), {
-    type: 'bar',
-    data: { labels: chartData.labels, datasets: [{label:'Total Spend', data:chartData.data, backgroundColor:chartData.colors, borderRadius:5}]},
+    type: 'line',
+    data: { labels: chartData.labels, datasets: [{label:'Total Spend', data:chartData.data, borderColor:'#f8182d', backgroundColor:'rgba(248,24,45,0.1)', pointBackgroundColor:chartData.colors, pointRadius:6, pointHoverRadius:8, fill:true, tension:0.3}]},
     options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+v.toLocaleString()}}}}
   });
 
@@ -483,6 +493,8 @@ function showConf(key) {
 
   const mc = document.getElementById('mainContent');
   const safeKey = key.replace(/'/g,"\\\'");
+  const confLeads = getLeads();
+  const totalConfLeads = Object.keys(confLeads).filter(k=>k.startsWith(key+'__')).reduce((s,k)=>s+(parseInt(confLeads[k])||0),0);
   mc.innerHTML = `
     <div class="detail-header">
       <h2>${key}</h2>
@@ -491,6 +503,7 @@ function showConf(key) {
         <span>&#128101; ${attendees.slice(0,3).join(', ')}${attendees.length>3?' +'+(attendees.length-3)+' more':''}</span>
         <span>&#128176; ${fmtN(totalAll)} total spend</span>
         ${spons > 0 ? `<span style="color:var(--accent)">&#128181; ${fmtN(spons)} sponsorship fee (${lastYear})</span>` : ''}
+        ${totalConfLeads > 0 ? `<span style="color:var(--accent)">&#127919; ${totalConfLeads} leads total</span>` : ''}
       </div>
       <div class="detail-actions">
         <button class="btn btn-ai" onclick="openPlanModal('${safeKey}')">&#10024; Plan for Next Year</button>
@@ -678,7 +691,8 @@ function switchAdminTab(idx) {
   if (idx===0) renderAdminNamesTab(body);
   else if (idx===1) renderAdminSponsTab(body);
   else if (idx===2) renderAdminBudgetsTab(body);
-  else renderAdminDataTab(body);
+  else if (idx===3) renderAdminDataTab(body);
+  else renderAdminLeadsTab(body);
 }
 
 function renderAdminNamesTab(body) {
@@ -774,6 +788,48 @@ function saveSponsorship(key, year, val) {
   else s[key + '__' + year] = amount;
   saveSponsorships(s);
   showToast('Sponsorship saved!');
+  buildSidebar();
+}
+
+function renderAdminLeadsTab(body) {
+  const DATA = getData();
+  const allConfs = Object.values(DATA.reduce((m,r)=>{
+    if(!m[r.confKey]) m[r.confKey]={key:r.confKey,years:new Set()};
+    m[r.confKey].years.add(r.year);
+    return m;
+  },{})).sort((a,b)=>a.key.localeCompare(b.key));
+  const leads = getLeads();
+  const totalLeads = Object.values(leads).reduce((s,v)=>s+(parseInt(v)||0),0);
+  body.innerHTML = `
+    <div class="admin-section">
+      <h3>&#127919; Potential Partners (Leads)</h3>
+      <p>Enter the number of potential partners (leads) collected at each conference. This count appears in the dashboard stats and summary table.</p>
+      ${totalLeads > 0 ? `<p style="font-weight:600;color:var(--accent)">Total leads across all conferences: ${totalLeads}</p>` : ''}
+      <table style="max-width:600px">
+        <thead><tr><th>Conference</th><th>Year</th><th style="text-align:center">Leads / Potential Partners</th></tr></thead>
+        <tbody>
+          ${allConfs.map(c => [...c.years].sort().map(yr => {
+            const lk = c.key + '__' + yr;
+            const val = leads[lk] || '';
+            return `<tr>
+              <td>${c.key}</td>
+              <td><span class="badge b${String(yr).slice(-2)}">${yr}</span></td>
+              <td style="display:flex;align-items:center;gap:6px;justify-content:center"><input type="number" min="0" placeholder="0" value="${val}" id="li_${(c.key+yr).replace(/[^a-z0-9]/gi,'_')}" style="text-align:center;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:90px;"><button class="btn btn-primary" data-key="${c.key}" data-yr="${yr}" style="padding:3px 10px;font-size:12px" onclick="saveLeadCount(this.dataset.key,this.dataset.yr,document.getElementById('li_${(c.key+yr).replace(/[^a-z0-9]/gi,'_')}').value);this.textContent='Saved ✓';setTimeout(()=>this.textContent='Save',1500)">Save</button></td>
+            </tr>`;
+          }).join('')).join('')}
+        </tbody>
+      </table>
+      <p style="margin-top:12px;font-size:12px;color:var(--muted)">Leads show in the overview stats, summary table, and each conference detail page.</p>
+    </div>`;
+}
+
+function saveLeadCount(key, year, val) {
+  const count = parseInt(val) || 0;
+  const l = getLeads();
+  if (count === 0) delete l[key + '__' + year];
+  else l[key + '__' + year] = count;
+  saveLeads(l);
+  showToast('Leads saved!');
   buildSidebar();
 }
 
