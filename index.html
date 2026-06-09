@@ -758,7 +758,7 @@ function renderAdminSponsTab(body) {
             return `<tr>
               <td>${c.key}</td>
               <td><span class="badge b${String(yr).slice(-2)}">${yr}</span></td>
-              <td class="money"><input type="number" placeholder="0.00" value="${val}" onchange="saveSponsorship('${c.key.replace(/'/g,"\\'")}", ${yr}, this.value)" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:130px;"></td>
+              <td class="money" style="display:flex;align-items:center;gap:6px;justify-content:flex-end"><input type="number" placeholder="0.00" value="${val}" id="si_${(c.key+yr).replace(/[^a-z0-9]/gi,'_')}" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:110px;"><button class="btn btn-primary" style="padding:3px 10px;font-size:12px;margin-left:4px" onclick="saveSponsorship('${c.key.replace(/'/g,'\\'')}',${yr},document.getElementById('si_${(c.key+yr).replace(/[^a-z0-9]/gi,'_')}').value);this.textContent='✓';setTimeout(()=>this.textContent='Save',1500)">Save</button></td>
             </tr>`;
           }).join('')).join('')}
         </tbody>
