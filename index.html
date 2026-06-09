@@ -75,7 +75,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .spons-bar{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:9px 14px;margin-bottom:14px;flex-wrap:wrap;}
 .spons-bar label{font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;}
 .spons-bar input{padding:4px 10px;border:1px solid #86efac;border-radius:5px;font-size:13px;width:130px;}
-.spons-note{font-size:12px;color:var(--muted);margin-left:4px;}
+.spons-note{font-size:12px;color:var(--muted);margin-left:8px;}
 .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
 .panel{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;}
 .panel h3{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text);}
@@ -140,7 +140,7 @@ tr:hover td{background:var(--bg);}
 .data-table-wrap{overflow-x:auto;}
 .data-table-wrap table{min-width:900px;}
 .data-table-wrap td input{width:100%;border:none;background:transparent;font-size:12px;padding:2px 4px;}
-.data-table-wrap td input:focus{outline:1px solid var(--accent);border-radius:3px;}
+.data-table-wrap td input:focus{outline:1px solid var(--accent);border-radius:3�x;}
 .toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;border-left:4px solid var(--gold);}
 .toast.show{opacity:1;}
 .green-text{color:var(--green);}
@@ -240,7 +240,7 @@ const RAW = [
 {"year":2026,"attendee":"Chris Goulard","conference":"XP Summit","location":"Colleyville, TX","dates":"May 4-6, 2026","type":"Employee (Full-Time)","managed":"Yes","fees":0,"expenses":2228.26,"total":2228.26,"mileage":0,"airTravel":1060.8,"meals":122.47,"expenseNotes":"","feeNotes":"","summary":"~150 XPs, mix of different church sizes. Kevin Bates and I hosted dinner for several XPs. Good interaction with people on breaks. Several churches knew about us from CDF.","suggestions":"Next year may coincide with ICCON. Will coordinate with Dave for coverage."}
 ];
 
-// ─── LOCALSTORAGE HELPERS ─────────────────────────────────────────────────
+// ─── LOCALSTORAGE HELPERS ─────────────────────────────────────
 function lsGet(key, def={}) { try { return JSON.parse(localStorage.getItem(key) || 'null') || def; } catch { return def; } }
 function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
 
@@ -251,7 +251,7 @@ function saveSponsorships(v) { lsSet('fpm_sponsorships', v); }
 function getBudgetsLS() { return lsGet('fpm_budgets', {}); }
 function saveBudgetsLS(v) { lsSet('fpm_budgets', v); }
 
-// ─── YEAR FILTER ──────────────────────────────────────────────────────────
+// ─── YEAR FILTER ──────────────────────────────────────────────
 let activeYear = null;
 function setYear(yr) {
   activeYear = yr;
@@ -263,7 +263,7 @@ function setYear(yr) {
   showOverview();
 }
 
-// ─── NORMALIZE ────────────────────────────────────────────────────────────
+// ─── NORMALIZE ───────────────────────────────────────────────
 function normalize(name) {
   const overrides = getNameOverrides();
   if (overrides[name]) return overrides[name];
@@ -290,7 +290,7 @@ function getData() {
   return RAW.map(r => ({...r, confKey: normalize(r.conference)}));
 }
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────
+// ─── HELPERS ─────────────────────────────────────────────────
 function fmt(n) { return n > 0 ? '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'; }
 function fmtN(n) { return n > 0 ? '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '$0.00'; }
 function fmtS(n) { return '$' + (n||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
@@ -323,7 +323,7 @@ function getSponsorshipForConf(key, yr) {
   return total;
 }
 
-// ─── CHARTS ──────────────────────────────────────────────────────────────────
+// ─── CHARTS ──────────────────────────────────────────────────
 let charts = {};
 function destroyCharts() {
   Object.values(charts).forEach(c => c.destroy());
@@ -333,7 +333,7 @@ function destroyCharts() {
 // FPM brand chart colors
 const CHART_COLORS = ['#f8182d', '#6366f1', '#e4cc99', '#0f172a', '#d97706', '#059669', '#8b5cf6', '#ec4899'];
 
-// ─── SIDEBAR ─────────────────────────────────────────────────────────────────
+// ─── SIDEBAR ─────────────────────────────────────────────────
 function buildSidebar() {
   const list = document.getElementById('confList');
   const confs = getConferences();
@@ -343,7 +343,7 @@ function buildSidebar() {
     const totalAll = c.rows.reduce((s,r)=>s+r.total,0);
     const spons = getSponsorshipForConf(c.key);
     const net = totalAll + spons;
-    return `<div class="conf-item" id="ci-${c.key.replace(/\s+/g,'_')}" onclick="showConf('${c.key.replace(/'/g,"\\'")}')"> 
+    return `<div class="conf-item" id="ci-${c.key.replace(/\s+/g,'_')}" onclick="showConf('${c.key.replace(/'/g,"\\'")}')">
       <div class="conf-name">${c.key}</div>
       <div class="conf-meta">${badges}<span>${fmtN(net)} net</span></div>
     </div>`;
@@ -356,7 +356,7 @@ function setActive(key) {
   if (el) el.classList.add('active');
 }
 
-// ─── OVERVIEW ────────────────────────────────────────────────────────────────
+// ─── OVERVIEW ────────────────────────────────────────────────
 function showOverview() {
   destroyCharts();
   setActive('');
@@ -411,7 +411,7 @@ function showOverview() {
           const totalAll=c.rows.reduce((s,r)=>s+r.total,0);
           const spons=getSponsorshipForConf(c.key);
           const net=totalAll+spons;
-          return `<tr onclick="showConf('${c.key.replace(/'/g,"\\'")}");" style="cursor:pointer">
+          return `<tr onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="cursor:pointer">
             <td><strong>${c.key}</strong></td>
             <td class="money">${t25>0?fmtN(t25):'—'}</td>
             <td class="money">${t26>0?fmtN(t26):'—'}</td>
@@ -430,7 +430,7 @@ function showOverview() {
   charts.years = new Chart(document.getElementById('chartYears'), {
     type: 'bar',
     data: { labels: chartData.labels, datasets: [{label:'Total Spend', data:chartData.data, backgroundColor:chartData.colors, borderRadius:5}]},
-    options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+v.toLocaleString()}}}}
+    options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>)$'+v.toLocaleString()}}}}
   });
 
   const top = byConf.slice(0,8);
@@ -441,7 +441,7 @@ function showOverview() {
   });
 }
 
-// ─── CONFERENCE DETAIL ────────────────────────────────────────────────────────
+// ─── CONFERENCE DETAIL ────────────────────────────────────────
 let currentConf = null;
 function showConf(key) {
   currentConf = key;
@@ -482,7 +482,7 @@ function showConf(key) {
   }
 
   const mc = document.getElementById('mainContent');
-  const safeKey = key.replace(/'/g,"\\'")
+  const safeKey = key.replace(/'/g,"\\\'");
   mc.innerHTML = `
     <div class="detail-header">
       <h2>${key}</h2>
@@ -508,7 +508,7 @@ function showConf(key) {
       <label>&#128181; Conference sponsorship fee (${lastYear}):</label>
       <input type="number" id="sponsInput" placeholder="$0.00" value="${spons||''}">
       <button class="btn btn-primary" style="padding:5px 14px;font-size:13px" onclick="saveSponsorship('${safeKey}', ${lastYear}, document.getElementById('sponsInput').value);this.textContent='Saved ✓';setTimeout(()=>this.textContent='Save',1500)">Save</button>
-      <span class="spons-note" id="sponsNote">${spons>0?'Saved: '+fmtN(spons)+' — adds to total cost':'adds to total cost; save to persist'}</span>
+      <span class="spons-note" id="sponsNote">${spons>0?'Saved: '+fmtN(spons)+' — adds to total cost':' adds to total cost; saved until updated'}</span>
     </div>
 
     <div class="detail-grid">
@@ -557,7 +557,7 @@ function showConf(key) {
       </div>
       <div class="note-card">
         <h3>&#128161; Suggestions</h3>
-        ${rows.filter(r=>r.suggestions&&r.suggestions.trim()&&r.suggestions.toLowerCase()!=='n/a'&&r.suggestions.toLowerCase()!=='none').map(r=>`
+        ${rows.filter(r=>r.suggestions&&r.suggestions.trim()&&r.suggestions.toLowerCase()!=='n/a'$&r.suggestions.toLowerCase()!=='none').map(r=>`
           <div class="note-item">
             <div class="note-author">${r.attendee} <span class="badge b${String(r.year).slice(-2)}">${r.year}</span></div>
             ${r.suggestions}
@@ -616,7 +616,7 @@ function updateSponsorship(key, year, val) {
   buildSidebar();
 }
 
-// ─── PLANNING BRIEFS ──────────────────────────────────────────────────────────
+// ─── PLANNING BRIEFS ──────────────────────────────────────────
 const PLANS = {
 "ABHE": `<h3>ABHE — Planning Brief</h3><p><strong>Based on:</strong> 2025 (Terry Stine, $2,486) + 2026 (Terry Stine, $4,247 — note: 2026 spiked due to a flight booking error)</p><h4>Recommended Attendees</h4><p>Terry Stine (primary — 2+ years of credibility with presidents) + D. Clay Perkins for the Advancement Leaders sub-conference. Two people total.</p><h4>Budget Estimate</h4><p>Target $2,500–3,000. Fee ~$1,025–1,125 | Air ~$500–600 (book early, verify AM/PM) | Hotel ~$600–700 | Meals ~$200–250 | Mileage ~$80.</p><h4>Logistics</h4><ul><li>Book flights immediately — the 2026 AM/PM error cost ~$400 extra.</li><li>Confirm whether ABHE board will subsidize a hotel room.</li><li>Upgrade pull-up display so FPM logo appears above table height.</li><li>Bring college-specific materials only — church brochures don't resonate.</li></ul><h4>Strategic Priorities</h4><ol><li>Continue breakfast meetings with college presidents — it's working.</li><li>Commission college-focused brochure separate from church materials.</li><li>Invest in quality swag with FPM branding.</li><li>Terry: bring copies of <em>Legacy Giving: The Goose and the Exotic Birds</em>.</li></ol>`,
 "CSN Forum": `<h3>CSN Forum — Planning Brief</h3><p><strong>Based on:</strong> 2025 (~$3,800, 3 people) + 2026 (~$1,530, 2 people). Dave and Kenn both call this FPM's best networking conference.</p><h4>Recommended Attendees</h4><p>Dave Hess + one regional person (Kenn showed $634 is doable in 2026). Three people was too many.</p><h4>Budget Estimate</h4><p>$1,500–2,000. Dave ~$900 | Second person ~$600 regional.</p><h4>Strategic Priorities</h4><ol><li>Collect video testimonials — develop 2 standard questions, bring recording equipment.</li><li>Build color-coded attendee list for targeted post-conference emails.</li><li>Explore Stewardship Impact pre-session sponsorship.</li><li>Evaluate CSN membership ($300/yr) and co-branded bags.</li></ol>`,
@@ -656,7 +656,7 @@ function openPlanModal(key) {
   }
 }
 
-// ─── ADMIN PANEL ──────────────────────────────────────────────────────────────
+// ─── ADMIN PANEL ─────────────────────────────────────────────
 let adminTabIndex = 0;
 function openAdmin() {
   document.getElementById('adminOverlay').classList.add('open');
@@ -748,7 +748,7 @@ function renderAdminSponsTab(body) {
   body.innerHTML = `
     <div class="admin-section">
       <h3>Conference Sponsorship Fees</h3>
-      <p>Enter the sponsorship fee FPM paid to each conference. This is added to the total cost. Click Save on each row — the value persists until you update it again.</p>
+      <p>Enter the sponsorship fee FPM paid to each conference. This is added to the total cost. Click Save on each row to store the value — it will persist until you update it again.</p>
       <table style="max-width:600px">
         <thead><tr><th>Conference</th><th>Year</th><th class="money">Sponsorship Amount</th></tr></thead>
         <tbody>
@@ -758,7 +758,7 @@ function renderAdminSponsTab(body) {
             return `<tr>
               <td>${c.key}</td>
               <td><span class="badge b${String(yr).slice(-2)}">${yr}</span></td>
-              <td class="money" style="display:flex;align-items:center;gap:6px;justify-content:flex-end"><input type="number" placeholder="0.00" value="${val}" id="si_${(c.key+yr).replace(/[^a-z0-9]/gi,'_')}" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:110px;"><button class="btn btn-primary" style="padding:3px 10px;font-size:12px;margin-left:4px" onclick="saveSponsorship('${c.key.replace(/'/g,'\\'')}',${yr},document.getElementById('si_${(c.key+yr).replace(/[^a-z0-9]/gi,'_')}').value);this.textContent='✓';setTimeout(()=>this.textContent='Save',1500)">Save</button></td>
+              <td class="money" style="display:flex;align-items:center;gap:6px;justify-content:flex-end"><input type="number" placeholder="0.00" value="${val}" id="si_${(c.key+yr).replace(/[^a-z0-9]/gi,'_')}" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:110px;"><button class="btn btn-primary" style="padding:3px 10px;font-size:12px" onclick="saveSponsorship('${c.key.replace(/'/g,"\\'")}',${yr},document.getElementById('si_${(c.key+yr).replace(/[^a-z0-9]/gi,'_')}').value);this.textContent='Saved ✓';setTimeout(()=>this.textContent='Save',1500)">Save</button></td>
             </tr>`;
           }).join('')).join('')}
         </tbody>
@@ -796,7 +796,7 @@ function renderAdminBudgetsTab(body) {
             const val = budgets[c.key] || '';
             return `<tr>
               <td>${c.key}</td>
-              <td class="money"><input type="number" placeholder="0.00" value="${val}" onchange="saveBudgetAdmin('${c.key.replace(/'/g,"\\'")}", this.value)" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:130px;"></td>
+              <td class="money"><input type="number" placeholder="0.00" value="${val}" onchange="saveBudgetAdmin('${c.key.replace(/'/g,"\\'")}', this.value)" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:130px;"></td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -854,7 +854,7 @@ function renderAdminDataTab(body) {
     </div>`;
 }
 
-// ─── TOAST ────────────────────────────────────────────────────────────────────
+// ─── TOAST ────────────────────────────────────────────────────
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -862,7 +862,7 @@ function showToast(msg) {
   setTimeout(()=>t.classList.remove('show'), 2500);
 }
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
+// ─── INIT ─────────────────────────────────────────────────────
 buildSidebar();
 showOverview();
 </script>
