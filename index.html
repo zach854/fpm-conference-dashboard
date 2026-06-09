@@ -6,29 +6,56 @@
 <title>FPM Conference Planning Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
-:root { color-scheme: light; --bg:#f8f9fa; --card:#fff; --border:#e2e8f0; --text:#1a202c; --muted:#718096; --accent:#2563eb; --accent-light:#dbeafe; --green:#059669; --red:#dc2626; --yellow:#d97706; }
+:root {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #1a1a1a;
+  --muted: #64748b;
+  --accent: #f8182d;
+  --accent-light: #fff5f5;
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #fff;
+  --sidebar-active-bg: #ef4444;
+  --sidebar-active-text: #ffffff;
+  --gold: #e4cc99;
+  --brown: #64748b;
+  --green: #059669;
+  --red: #f8182d;
+  --yellow: #d97706;
+}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
 .app{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden;}
-.header{background:var(--card);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:12px;}
-.header h1{font-size:17px;font-weight:700;}
-.header .sub{font-size:12px;color:var(--muted);margin-left:auto;}
+.header{background:#0f172a;border-bottom:3px solid var(--accent);padding:0 20px;display:flex;align-items:center;gap:12px;}
+.header h1{font-size:17px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;}
+.header h1 span.logo{color:var(--gold);}
+.year-filter{display:flex;gap:4px;margin-left:16px;}
+.yr-btn{padding:5px 14px;border-radius:20px;border:1.5px solid #555;background:transparent;color:#ccc;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s;}
+.yr-btn:hover{border-color:var(--accent);color:var(--accent);}
+.yr-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.header .hright{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.header .sub{font-size:12px;color:#888;}
+.btn-admin{padding:6px 14px;background:transparent;border:1.5px solid #555;color:#ccc;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s;}
+.btn-admin:hover{border-color:var(--accent);color:var(--accent);}
 .main{display:grid;grid-template-columns:260px 1fr;overflow:hidden;}
-.sidebar{border-right:1px solid var(--border);background:var(--card);overflow-y:auto;display:flex;flex-direction:column;}
-.sidebar-section{padding:12px 16px 4px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
-.conf-item{padding:9px 16px;cursor:pointer;border-left:3px solid transparent;transition:background .1s;}
-.conf-item:hover{background:var(--bg);}
-.conf-item.active{border-left-color:var(--accent);background:var(--accent-light);}
+.sidebar{background:var(--sidebar-bg);overflow-y:auto;display:flex;flex-direction:column;}
+.sidebar-section{padding:12px 16px 4px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;}
+.conf-item{padding:9px 16px;cursor:pointer;border-left:3px solid transparent;transition:background .1s;color:rgba(255,255,255,.85);}
+.conf-item:hover{background:rgba(255,255,255,.1);}
+.conf-item.active{border-left-color:var(--accent);background:var(--sidebar-active-bg);color:var(--sidebar-active-text);}
+.conf-item.active .conf-meta{color:#555;}
 .conf-name{font-weight:600;font-size:13px;margin-bottom:2px;}
-.conf-meta{font-size:11px;color:var(--muted);display:flex;gap:6px;align-items:center;}
-.badge{display:inline-flex;align-items:center;padding:1px 5px;border-radius:8px;font-size:10px;font-weight:700;}
+.conf-meta{font-size:11px;color:rgba(255,255,255,.6);display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700;}
 .b25{background:#fef9c3;color:#854d0e;}
 .b26{background:#dcfce7;color:#166534;}
-.overview-btn{margin:12px 14px 4px;padding:8px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;}
-.overview-btn:hover{opacity:.9;}
+.overview-btn{margin:12px 14px 4px;padding:9px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;letter-spacing:.02em;}
+.overview-btn:hover{background:#d01025;}
 .content{overflow-y:auto;padding:20px;background:var(--bg);}
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;border-top:3px solid var(--accent);}
 .stat-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
 .stat-value{font-size:22px;font-weight:700;}
 .stat-sub{font-size:11px;color:var(--muted);margin-top:2px;}
@@ -36,15 +63,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .chart-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;}
 .chart-card h3{font-size:14px;font-weight:600;margin-bottom:10px;}
 .chart-wrap{position:relative;height:200px;}
-.detail-header{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin-bottom:14px;}
+.detail-header{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin-bottom:14px;border-top:3px solid var(--accent);}
 .detail-header h2{font-size:20px;font-weight:700;margin-bottom:6px;}
 .detail-meta{font-size:13px;color:var(--muted);margin-bottom:14px;display:flex;gap:16px;flex-wrap:wrap;}
 .detail-actions{display:flex;gap:8px;flex-wrap:wrap;}
-.budget-bar{display:flex;align-items:center;gap:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:9px 14px;margin-bottom:14px;flex-wrap:wrap;}
-.budget-bar label{font-size:13px;font-weight:600;color:var(--accent);white-space:nowrap;}
-.budget-bar input{padding:4px 10px;border:1px solid #93c5fd;border-radius:5px;font-size:13px;width:130px;}
+.budget-bar{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:9px 14px;margin-bottom:8px;flex-wrap:wrap;}
+.budget-bar label{font-size:13px;font-weight:600;color:var(--brown);white-space:nowrap;}
+.budget-bar input{padding:4px 10px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:130px;}
 .budget-bar .bstatus{font-size:13px;font-weight:700;margin-left:4px;}
 .over{color:var(--red);} .under{color:var(--green);} .neutral{color:var(--muted);}
+.spons-bar{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:9px 14px;margin-bottom:14px;flex-wrap:wrap;}
+.spons-bar label{font-size:13px;font-weight:600;color:var(--green);white-space:nowrap;}
+.spons-bar input{padding:4px 10px;border:1px solid #86efac;border-radius:5px;font-size:13px;width:130px;}
+.spons-note{font-size:12px;color:var(--muted);margin-left:4px;}
 .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
 .panel{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;}
 .panel h3{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text);}
@@ -57,19 +88,19 @@ tr:hover td{background:var(--bg);}
 .btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:600;}
 .btn:hover{opacity:.85;}
 .btn-primary{background:var(--accent);color:#fff;}
-.btn-ai{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;display:inline-flex;align-items:center;gap:6px;}
+.btn-ai{background:linear-gradient(135deg,#0f172a,#1e293b);color:#e2e8f0;display:inline-flex;align-items:center;gap:6px;border:1px solid #334155;}
 .btn-outline{background:#fff;color:var(--text);border:1px solid var(--border);}
 .notes-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
 .note-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;max-height:280px;overflow-y:auto;}
 .note-card h3{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;}
 .note-item{background:var(--bg);border-radius:5px;padding:9px 11px;margin-bottom:8px;font-size:12px;line-height:1.5;}
 .note-author{font-size:11px;font-weight:700;color:var(--accent);margin-bottom:3px;}
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;align-items:center;justify-content:center;}
 .modal-overlay.open{display:flex;}
-.modal{background:#fff;border-radius:10px;padding:24px;width:700px;max-width:95vw;max-height:88vh;overflow-y:auto;}
+.modal{background:#fff;border-radius:10px;padding:24px;width:700px;max-width:95vw;max-height:88vh;overflow-y:auto;border-top:4px solid var(--accent);}
 .modal h2{font-size:17px;font-weight:700;margin-bottom:4px;}
 .modal .msub{color:var(--muted);font-size:13px;margin-bottom:16px;}
-.modal-body{font-size:13px;line-height:1.7;}.modal-body h3{font-size:16px;margin-bottom:10px;}.modal-body h4{font-size:13px;font-weight:700;color:var(--accent);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04em;}.modal-body p{margin-bottom:10px;}.modal-body ul,.modal-body ol{padding-left:20px;margin-bottom:10px;}.modal-body li{margin-bottom:4px;}
+.modal-body{font-size:13px;line-height:1.7;}.modal-body h3{font-size:16px;margin-bottom:10px;color:var(--text);}.modal-body h4{font-size:13px;font-weight:700;color:var(--accent);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04em;}.modal-body p{margin-bottom:10px;}.modal-body ul,.modal-body ol{padding-left:20px;margin-bottom:10px;}.modal-body li{margin-bottom:4px;}
 .modal-loading{display:flex;align-items:center;gap:10px;color:var(--muted);padding:20px 0;}
 .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -81,37 +112,98 @@ tr:hover td{background:var(--bg);}
 .yr-fill{height:100%;background:var(--accent);border-radius:3px;opacity:.8;}
 .yr-amt{font-size:11px;color:var(--muted);width:70px;text-align:right;}
 .full-table{grid-column:1/-1;}
+/* ADMIN PANEL */
+.admin-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:flex-start;justify-content:center;padding-top:40px;}
+.admin-overlay.open{display:flex;}
+.admin-panel{background:#fff;border-radius:12px;width:960px;max-width:96vw;max-height:calc(100vh - 80px);display:flex;flex-direction:column;border-top:4px solid var(--brown);}
+.admin-header{padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.admin-header h2{font-size:18px;font-weight:700;flex:1;}
+.admin-header h2 span{color:var(--brown);}
+.admin-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;padding:0 24px;}
+.admin-tab{padding:12px 18px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px;}
+.admin-tab:hover{color:var(--text);}
+.admin-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.admin-body{padding:20px 24px;overflow-y:auto;flex:1;}
+.admin-section{margin-bottom:24px;}
+.admin-section h3{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--brown);}
+.admin-section p{font-size:12px;color:var(--muted);margin-bottom:12px;}
+.name-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;font-size:13px;margin-bottom:6px;}
+.name-grid .arrow{color:var(--muted);text-align:center;}
+.name-grid input{padding:5px 9px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:100%;}
+.name-grid input:focus{outline:none;border-color:var(--brown);box-shadow:0 0 0 2px rgba(136,118,99,.15);}
+.admin-save-row{display:flex;gap:8px;margin-top:12px;}
+.spons-grid{display:grid;gap:8px;}
+.spons-row{display:grid;grid-template-columns:180px 80px 1fr;gap:8px;align-items:center;font-size:13px;}
+.spons-row label{font-weight:600;}
+.spons-row .yr-badge{text-align:center;}
+.spons-row input{padding:5px 9px;border:1px solid var(--border);border-radius:5px;font-size:13px;max-width:150px;}
+.data-table-wrap{overflow-x:auto;}
+.data-table-wrap table{min-width:900px;}
+.data-table-wrap td input{width:100%;border:none;background:transparent;font-size:12px;padding:2px 4px;}
+.data-table-wrap td input:focus{outline:1px solid var(--accent);border-radius:3px;}
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;border-left:4px solid var(--gold);}
+.toast.show{opacity:1;}
+.green-text{color:var(--green);}
+.section-divider{border:none;border-top:1px solid var(--border);margin:16px 0;}
 </style>
 </head>
 <body>
 <div class="app">
 <div class="header">
-  <h1>📋 FPM Conference Planning Dashboard</h1>
-  <div class="sub">2025–2026 Post-Event Reports &nbsp;|&nbsp; Select a conference to explore</div>
+  <h1><span class="logo">FPM</span> Conference Dashboard</h1>
+  <div class="year-filter">
+    <button class="yr-btn active" id="yrBtnAll" onclick="setYear(null)">All Years</button>
+    <button class="yr-btn" id="yrBtn2025" onclick="setYear(2025)">2025</button>
+    <button class="yr-btn" id="yrBtn2026" onclick="setYear(2026)">2026</button>
+  </div>
+  <div class="hright">
+    <span class="sub">Post-Event Reports &nbsp;|&nbsp; Select a conference</span>
+    <button class="btn-admin" onclick="openAdmin()">⚙ Admin</button>
+  </div>
 </div>
 <div class="main">
   <div class="sidebar">
-    <button class="overview-btn" onclick="showOverview()">📊 Overview</button>
-    <div class="sidebar-section">All Conferences</div>
+    <button class="overview-btn" onclick="showOverview()">&#128202; Overview</button>
+    <div class="sidebar-section">Conferences</div>
     <div id="confList"></div>
   </div>
   <div class="content" id="mainContent"><div class="empty">Click Overview or select a conference.</div></div>
 </div>
 </div>
 
+<!-- Plan Modal -->
 <div class="modal-overlay" id="planModal">
 <div class="modal">
-  <h2>✨ AI Conference Planning Brief</h2>
+  <h2>&#10024; Conference Planning Brief</h2>
   <div class="msub" id="planModalSub"></div>
-  <div id="planModalBody"><div class="modal-loading"><div class="spinner"></div>Generating your plan...</div></div>
+  <div id="planModalBody"><div class="modal-loading"><div class="spinner"></div>Loading...</div></div>
   <div class="modal-actions">
     <button class="btn btn-outline" onclick="document.getElementById('planModal').classList.remove('open')">Close</button>
   </div>
 </div>
 </div>
 
+<!-- Admin Panel -->
+<div class="admin-overlay" id="adminOverlay" onclick="adminOverlayClick(event)">
+<div class="admin-panel" id="adminPanel">
+  <div class="admin-header">
+    <h2>&#9881; <span>Admin</span> — Conference Management</h2>
+    <button class="btn btn-outline" onclick="closeAdmin()">&#10005; Close</button>
+  </div>
+  <div class="admin-tabs">
+    <div class="admin-tab active" id="atab0" onclick="switchAdminTab(0)">&#128221; Conference Names</div>
+    <div class="admin-tab" id="atab1" onclick="switchAdminTab(1)">&#128181; Sponsorships</div>
+    <div class="admin-tab" id="atab2" onclick="switchAdminTab(2)">&#128202; Budgets</div>
+    <div class="admin-tab" id="atab3" onclick="switchAdminTab(3)">&#128196; Data Review</div>
+  </div>
+  <div class="admin-body" id="adminBody"></div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
-// ─── DATA ───────────────────────────────────────────────────
+// ─── RAW DATA ─────────────────────────────────────────────────
 const RAW = [
 {"year":2025,"attendee":"Terry Eugene Stine","conference":"ABHE","location":"Orlando, FL","dates":"Feb 11-14","type":"Field Representative","managed":"Yes","fees":1025,"expenses":1461.22,"total":2486.22,"mileage":78.4,"airTravel":526.96,"meals":259.52,"expenseNotes":"Airport Parking; hotel billed to ABHE board","feeNotes":"","summary":"Well worth the time, effort and expense. Takes time to develop reputation. Many staff shift from one college to another which is a plus.","suggestions":"Need to change pull-up display to have name/logo at top. Need quality swag. Need focused brochures for colleges vs churches."},
 {"year":2025,"attendee":"Dave Hess","conference":"CSN Forum","location":"","dates":"March 3-5, 2025","type":"Employee (Full-Time)","managed":"No","fees":0,"expenses":1159.97,"total":1159.97,"mileage":37.8,"airTravel":0,"meals":69.39,"expenseNotes":"","feeNotes":"","summary":"Materials shipped from CSN. Identified potential partners, current partners via color-coded attendee list.","suggestions":"Great opportunity to collect video testimonials. Develop two short questions. Consider CSN membership ($300/yr). Could provide CSN tools to partners."},
@@ -148,10 +240,33 @@ const RAW = [
 {"year":2026,"attendee":"Chris Goulard","conference":"XP Summit","location":"Colleyville, TX","dates":"May 4-6, 2026","type":"Employee (Full-Time)","managed":"Yes","fees":0,"expenses":2228.26,"total":2228.26,"mileage":0,"airTravel":1060.8,"meals":122.47,"expenseNotes":"","feeNotes":"","summary":"~150 XPs, mix of different church sizes. Kevin Bates and I hosted dinner for several XPs. Good interaction with people on breaks. Several churches knew about us from CDF.","suggestions":"Next year may coincide with ICCON. Will coordinate with Dave for coverage."}
 ];
 
-// ─── NORMALIZE ───────────────────────────────────────────────
-const BUDGETS = {}; // in-session budget tracking
+// ─── LOCALSTORAGE HELPERS ─────────────────────────────────────────────────
+function lsGet(key, def={}) { try { return JSON.parse(localStorage.getItem(key) || 'null') || def; } catch { return def; } }
+function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
 
+function getNameOverrides() { return lsGet('fpm_name_overrides', {}); }
+function saveNameOverrides(v) { lsSet('fpm_name_overrides', v); }
+function getSponsorships() { return lsGet('fpm_sponsorships', {}); }
+function saveSponsorships(v) { lsSet('fpm_sponsorships', v); }
+function getBudgetsLS() { return lsGet('fpm_budgets', {}); }
+function saveBudgetsLS(v) { lsSet('fpm_budgets', v); }
+
+// ─── YEAR FILTER ──────────────────────────────────────────────────────────
+let activeYear = null;
+function setYear(yr) {
+  activeYear = yr;
+  document.querySelectorAll('.yr-btn').forEach(b => b.classList.remove('active'));
+  const id = yr ? 'yrBtn' + yr : 'yrBtnAll';
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+  buildSidebar();
+  showOverview();
+}
+
+// ─── NORMALIZE ────────────────────────────────────────────────────────────
 function normalize(name) {
+  const overrides = getNameOverrides();
+  if (overrides[name]) return overrides[name];
   const n = name.toLowerCase();
   if (n.includes('csn forum') || n === 'csn' || n.includes('christian stewardship network')) return 'CSN Forum';
   if (n.includes('csn regional') || n.includes('csn oh') || n.includes('csn ohio')) return 'CSN Regional';
@@ -170,15 +285,21 @@ function normalize(name) {
   return name;
 }
 
-const DATA = RAW.map(r => ({...r, confKey: normalize(r.conference)}));
+// Rebuild DATA with fresh normalization each time (needed when overrides change)
+function getData() {
+  return RAW.map(r => ({...r, confKey: normalize(r.conference)}));
+}
 
-// ─── HELPERS ─────────────────────────────────────────────────
+// ─── HELPERS ──────────────────────────────────────────────────────────────
 function fmt(n) { return n > 0 ? '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'; }
 function fmtN(n) { return n > 0 ? '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '$0.00'; }
+function fmtS(n) { return '$' + (n||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 
-function getConferences() {
+function getConferences(data) {
+  const DATA = data || getData();
+  const filtered = activeYear ? DATA.filter(r => r.year === activeYear) : DATA;
   const map = {};
-  DATA.forEach(r => {
+  filtered.forEach(r => {
     if (!map[r.confKey]) map[r.confKey] = {key: r.confKey, years: new Set(), rows: []};
     map[r.confKey].years.add(r.year);
     map[r.confKey].rows.push(r);
@@ -190,14 +311,29 @@ function totalByYear(rows, yr) {
   return rows.filter(r=>r.year===yr).reduce((s,r)=>s+r.total,0);
 }
 
-// ─── CHARTS ──────────────────────────────────────────────────
+function getSponsorshipForConf(key, yr) {
+  const s = getSponsorships();
+  const k = yr ? key + '__' + yr : null;
+  if (k && s[k] !== undefined) return parseFloat(s[k]) || 0;
+  // Sum all years if no year specified
+  let total = 0;
+  Object.keys(s).forEach(sk => {
+    if (sk.startsWith(key + '__')) total += parseFloat(s[sk]) || 0;
+  });
+  return total;
+}
+
+// ─── CHARTS ──────────────────────────────────────────────────────────────────
 let charts = {};
 function destroyCharts() {
   Object.values(charts).forEach(c => c.destroy());
   charts = {};
 }
 
-// ─── SIDEBAR ─────────────────────────────────────────────────
+// FPM brand chart colors
+const CHART_COLORS = ['#f8182d', '#6366f1', '#e4cc99', '#0f172a', '#d97706', '#059669', '#8b5cf6', '#ec4899'];
+
+// ─── SIDEBAR ─────────────────────────────────────────────────────────────────
 function buildSidebar() {
   const list = document.getElementById('confList');
   const confs = getConferences();
@@ -205,9 +341,11 @@ function buildSidebar() {
     const yrs = [...c.years].sort();
     const badges = yrs.map(y => `<span class="badge b${String(y).slice(-2)}">${y}</span>`).join('');
     const totalAll = c.rows.reduce((s,r)=>s+r.total,0);
-    return `<div class="conf-item" id="ci-${c.key.replace(/\s+/g,'_')}" onclick="showConf('${c.key.replace(/'/g,"\\'")}')">
+    const spons = getSponsorshipForConf(c.key);
+    const net = totalAll - spons;
+    return `<div class="conf-item" id="ci-${c.key.replace(/\s+/g,'_')}" onclick="showConf('${c.key.replace(/'/g,"\\'")}')"> 
       <div class="conf-name">${c.key}</div>
-      <div class="conf-meta">${badges}<span>${fmtN(totalAll)} total</span></div>
+      <div class="conf-meta">${badges}<span>${fmtN(net)} net</span></div>
     </div>`;
   }).join('');
 }
@@ -218,49 +356,67 @@ function setActive(key) {
   if (el) el.classList.add('active');
 }
 
-// ─── OVERVIEW ────────────────────────────────────────────────
+// ─── OVERVIEW ────────────────────────────────────────────────────────────────
 function showOverview() {
   destroyCharts();
   setActive('');
   document.querySelectorAll('.conf-item').forEach(el => el.classList.remove('active'));
-
+  const DATA = getData();
+  const showYears = activeYear ? [activeYear] : [2025, 2026];
   const d25 = DATA.filter(r=>r.year===2025);
   const d26 = DATA.filter(r=>r.year===2026);
-  const confs = getConferences();
+  const confs = getConferences(DATA);
+  const displayData = activeYear ? DATA.filter(r=>r.year===activeYear) : DATA;
   const total25 = d25.reduce((s,r)=>s+r.total,0);
   const total26 = d26.reduce((s,r)=>s+r.total,0);
   const events25 = new Set(d25.map(r=>r.confKey)).size;
   const events26 = new Set(d26.map(r=>r.confKey)).size;
+  const sponsorships = getSponsorships();
+  const totalSpons = Object.values(sponsorships).reduce((s,v)=>s+(parseFloat(v)||0),0);
+  const displayTotal = displayData.reduce((s,r)=>s+r.total,0);
+  const byConf = confs.map(c=>({key:c.key, total:c.rows.reduce((s,r)=>s+r.total,0), spons:getSponsorshipForConf(c.key)})).sort((a,b)=>b.total-a.total);
 
-  // Top conferences by total spend (all years)
-  const byConf = confs.map(c=>({key:c.key, total: c.rows.reduce((s,r)=>s+r.total,0)})).sort((a,b)=>b.total-a.total);
+  let statsHtml = '';
+  if (!activeYear) {
+    statsHtml = `
+      <div class="stat-card"><div class="stat-label">Total Conferences</div><div class="stat-value">${confs.length}</div><div class="stat-sub">across 2025–2026</div></div>
+      <div class="stat-card"><div class="stat-label">2025 Total Spend</div><div class="stat-value">${fmtN(total25)}</div><div class="stat-sub">${events25} unique conferences, ${d25.length} reports</div></div>
+      <div class="stat-card"><div class="stat-label">2026 Total Spend</div><div class="stat-value">${fmtN(total26)}</div><div class="stat-sub">${events26} unique conferences, ${d26.length} reports</div></div>
+      <div class="stat-card"><div class="stat-label">YoY Change</div><div class="stat-value" style="color:${total26>total25?'var(--red)':'var(--green)'}">${total26>total25?'▲':'▼'} ${Math.abs(Math.round((total26-total25)/total25*100))}%</div><div class="stat-sub">${total26>total25?'increase':'decrease'} from 2025</div></div>`;
+  } else {
+    const numConfs = confs.length;
+    const numReports = displayData.length;
+    const totalSponsYear = Object.keys(sponsorships).filter(k=>k.endsWith('__'+activeYear)).reduce((s,k)=>s+(parseFloat(sponsorships[k])||0),0);
+    const netTotal = displayTotal - totalSponsYear;
+    statsHtml = `
+      <div class="stat-card"><div class="stat-label">${activeYear} Conferences</div><div class="stat-value">${numConfs}</div><div class="stat-sub">${numReports} attendee reports</div></div>
+      <div class="stat-card"><div class="stat-label">${activeYear} Total Spend</div><div class="stat-value">${fmtN(displayTotal)}</div><div class="stat-sub">all conference costs</div></div>
+      <div class="stat-card"><div class="stat-label">Sponsorships (${activeYear})</div><div class="stat-value" style="color:var(--green)">${fmtN(totalSponsYear)}</div><div class="stat-sub">revenue received</div></div>
+      <div class="stat-card"><div class="stat-label">Net Cost (${activeYear})</div><div class="stat-value">${fmtN(netTotal)}</div><div class="stat-sub">after sponsorships</div></div>`;
+  }
 
   const mc = document.getElementById('mainContent');
   mc.innerHTML = `
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-label">Total Conferences</div><div class="stat-value">${confs.length}</div><div class="stat-sub">across 2025–2026</div></div>
-      <div class="stat-card"><div class="stat-label">2025 Total Spend</div><div class="stat-value">${fmtN(total25)}</div><div class="stat-sub">${events25} unique conferences, ${d25.length} attendee reports</div></div>
-      <div class="stat-card"><div class="stat-label">2026 Total Spend</div><div class="stat-value">${fmtN(total26)}</div><div class="stat-sub">${events26} unique conferences, ${d26.length} attendee reports</div></div>
-      <div class="stat-card"><div class="stat-label">YoY Change</div><div class="stat-value" style="color:${total26>total25?'var(--red)':'var(--green)'}">
-        ${total26>total25?'▲':'▼'} ${Math.abs(Math.round((total26-total25)/total25*100))}%</div>
-        <div class="stat-sub">${total26>total25?'increase':'decrease'} from 2025</div>
-      </div>
-    </div>
+    <div class="stats-row">${statsHtml}</div>
     <div class="charts-row">
-      <div class="chart-card"><h3>Total Spend by Year</h3><div class="chart-wrap"><canvas id="chartYears"></canvas></div></div>
-      <div class="chart-card"><h3>Top Conferences by Total Spend</h3><div class="chart-wrap"><canvas id="chartConfs"></canvas></div></div>
+      <div class="chart-card"><h3>Spend by Year</h3><div class="chart-wrap"><canvas id="chartYears"></canvas></div></div>
+      <div class="chart-card"><h3>Top Conferences by Spend</h3><div class="chart-wrap"><canvas id="chartConfs"></canvas></div></div>
     </div>
     <div class="panel">
-      <h3>All Conferences — Year-over-Year Summary</h3>
+      <h3>All Conferences — Summary${activeYear ? ' ('+activeYear+')' : ''}</h3>
       <table>
-        <thead><tr><th>Conference</th><th class="money">2025 Spend</th><th class="money">2026 Spend</th><th class="money">Total</th><th>Years Attended</th></tr></thead>
+        <thead><tr><th>Conference</th><th class="money">2025 Spend</th><th class="money">2026 Spend</th><th class="money">Sponsorships</th><th class="money">Net Cost</th><th>Years</th></tr></thead>
         <tbody>${confs.map(c=>{
           const t25=totalByYear(c.rows,2025), t26=totalByYear(c.rows,2026);
-          return `<tr onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="cursor:pointer">
+          const totalAll=c.rows.reduce((s,r)=>s+r.total,0);
+          const spons=getSponsorshipForConf(c.key);
+          const net=totalAll-spons;
+          return `<tr onclick="showConf('${c.key.replace(/'/g,"\\'")}");" style="cursor:pointer">
             <td><strong>${c.key}</strong></td>
             <td class="money">${t25>0?fmtN(t25):'—'}</td>
             <td class="money">${t26>0?fmtN(t26):'—'}</td>
-            <td class="money">${fmtN(c.rows.reduce((s,r)=>s+r.total,0))}</td>
+            <td class="money green-text">${spons>0?fmtN(spons):'—'}</td>
+            <td class="money"><strong>${fmtN(net)}</strong></td>
             <td>${[...c.years].sort().map(y=>`<span class="badge b${String(y).slice(-2)}">${y}</span>`).join(' ')}</td>
           </tr>`;
         }).join('')}</tbody>
@@ -268,13 +424,15 @@ function showOverview() {
     </div>`;
 
   // Year chart
+  const chartData = !activeYear
+    ? {labels:['2025','2026'], data:[total25,total26], colors:['#f8182d','#6366f1']}
+    : {labels:[String(activeYear)], data:[displayTotal], colors:['#f8182d']};
   charts.years = new Chart(document.getElementById('chartYears'), {
     type: 'bar',
-    data: { labels: ['2025','2026'], datasets: [{label:'Total Spend', data:[total25,total26], backgroundColor:['#3b82f6','#22c55e'], borderRadius:5}]},
+    data: { labels: chartData.labels, datasets: [{label:'Total Spend', data:chartData.data, backgroundColor:chartData.colors, borderRadius:5}]},
     options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+v.toLocaleString()}}}}
   });
 
-  // Top conf chart
   const top = byConf.slice(0,8);
   charts.confs = new Chart(document.getElementById('chartConfs'), {
     type: 'bar',
@@ -283,65 +441,73 @@ function showOverview() {
   });
 }
 
-// ─── CONFERENCE DETAIL ────────────────────────────────────────
+// ─── CONFERENCE DETAIL ────────────────────────────────────────────────────────
 let currentConf = null;
 function showConf(key) {
   currentConf = key;
   destroyCharts();
   setActive(key);
-  const confs = getConferences();
+  const DATA = getData();
+  const confs = getConferences(DATA);
   const conf = confs.find(c=>c.key===key);
   if (!conf) return;
-
   const rows = conf.rows;
   const years = [...conf.years].sort();
   const totalAll = rows.reduce((s,r)=>s+r.total,0);
-  const budget = BUDGETS[key] || 0;
-
-  // Unique attendees
+  const budgets = getBudgetsLS();
+  const budget = budgets[key] || 0;
+  const sponsorships = getSponsorships();
+  // Get most recent year sponsorship
+  const lastYear = years[years.length-1];
+  const sponsKey = key + '__' + lastYear;
+  const spons = parseFloat(sponsorships[sponsKey]) || 0;
   const attendees = [...new Set(rows.map(r=>r.attendee))];
-
-  // Spending by year
   const byYear = years.map(y=>({year:y, total:totalByYear(rows,y), rows:rows.filter(r=>r.year===y)}));
-
-  // Expense breakdown totals (all years)
   const totFees = rows.reduce((s,r)=>s+r.fees,0);
   const totExpenses = rows.reduce((s,r)=>s+r.expenses,0);
   const totAir = rows.reduce((s,r)=>s+r.airTravel,0);
   const totMeals = rows.reduce((s,r)=>s+r.meals,0);
   const totMileage = rows.reduce((s,r)=>s+r.mileage,0);
   const totOther = totExpenses - totAir - totMeals - totMileage;
-
-  // Budget status
   const lastYrTotal = byYear.length > 0 ? byYear[byYear.length-1].total : 0;
+  const netLastYr = lastYrTotal - spons;
+
   let bStatusHtml = '';
   if (budget > 0) {
-    const diff = budget - lastYrTotal;
+    const diff = budget - netLastYr;
     const pct = Math.abs(Math.round(diff/budget*100));
     bStatusHtml = diff >= 0
-      ? `<span class="bstatus under">✓ ${fmtN(diff)} under budget (${pct}%)</span>`
-      : `<span class="bstatus over">✗ ${fmtN(Math.abs(diff))} over budget (${pct}%)</span>`;
+      ? `<span class="bstatus under">&#10003; ${fmtN(diff)} under budget (${pct}%)</span>`
+      : `<span class="bstatus over">&#10007; ${fmtN(Math.abs(diff))} over budget (${pct}%)</span>`;
   }
 
   const mc = document.getElementById('mainContent');
+  const safeKey = key.replace(/'/g,"\\'")
   mc.innerHTML = `
     <div class="detail-header">
       <h2>${key}</h2>
       <div class="detail-meta">
-        <span>📅 ${years.join(', ')}</span>
-        <span>👥 ${attendees.slice(0,3).join(', ')}${attendees.length>3?' +' + (attendees.length-3) + ' more':''}</span>
-        <span>💰 ${fmtN(totalAll)} total across all years</span>
+        <span>&#128197; ${years.join(', ')}</span>
+        <span>&#128101; ${attendees.slice(0,3).join(', ')}${attendees.length>3?' +'+(attendees.length-3)+' more':''}</span>
+        <span>&#128176; ${fmtN(totalAll)} total spend</span>
+        ${spons > 0 ? `<span style="color:var(--green)">&#128181; ${fmtN(spons)} sponsored (${lastYear})</span>` : ''}
       </div>
       <div class="detail-actions">
-        <button class="btn btn-ai" onclick="openPlanModal('${key.replace(/'/g,"\\'")}')">✨ Plan for Next Year</button>
-        <button class="btn btn-outline" onclick="showOverview()">← Back to Overview</button>
+        <button class="btn btn-ai" onclick="openPlanModal('${safeKey}')">&#10024; Plan for Next Year</button>
+        <button class="btn btn-outline" onclick="showOverview()">&#8592; Overview</button>
       </div>
     </div>
 
     <div class="budget-bar">
-      <label>📊 Budget for most recent year:</label>
-      <input type="number" id="budgetInput" placeholder="Enter amount..." value="${budget||''}" onchange="setBudget('${key.replace(/'/g,"\\'")}', this.value)" oninput="updateBudgetStatus('${key.replace(/'/g,"\\'")}', this.value, ${lastYrTotal})">
+      <label>&#128202; Budget for ${lastYear}:</label>
+      <input type="number" id="budgetInput" placeholder="Enter amount..." value="${budget||''}" oninput="updateBudgetStatus('${safeKey}', this.value, ${netLastYr})">
       <span id="budgetStatus">${bStatusHtml}</span>
+    </div>
+
+    <div class="spons-bar">
+      <label>&#128181; Sponsorship received (${lastYear}):</label>
+      <input type="number" id="sponsInput" placeholder="$0.00" value="${spons||''}" oninput="updateSponsorship('${safeKey}', ${lastYear}, this.value)">
+      <span class="spons-note">reduces net cost; saved across sessions</span>
     </div>
 
     <div class="detail-grid">
@@ -375,22 +541,22 @@ function showConf(key) {
     </div>
 
     <div class="panel" style="margin-bottom:14px">
-      <h3>Spending Histogram — Individual Report Totals</h3>
+      <h3>Spending Histogram</h3>
       <div class="chart-wrap"><canvas id="chartHist"></canvas></div>
     </div>
 
     <div class="notes-grid">
       <div class="note-card">
-        <h3>📝 Summary & Overview Notes</h3>
-        ${rows.filter(r=>r.summary && r.summary.trim() && r.summary.toLowerCase()!=='n/a').map(r=>`
+        <h3>&#128221; Summary Notes</h3>
+        ${rows.filter(r=>r.summary&&r.summary.trim()&&r.summary.toLowerCase()!=='n/a').map(r=>`
           <div class="note-item">
             <div class="note-author">${r.attendee} <span class="badge b${String(r.year).slice(-2)}">${r.year}</span></div>
             ${r.summary}
           </div>`).join('') || '<div class="note-item" style="color:var(--muted)">No notes recorded.</div>'}
       </div>
       <div class="note-card">
-        <h3>💡 Suggestions for Next Time</h3>
-        ${rows.filter(r=>r.suggestions && r.suggestions.trim() && r.suggestions.toLowerCase()!=='n/a' && r.suggestions.toLowerCase()!=='none').map(r=>`
+        <h3>&#128161; Suggestions</h3>
+        ${rows.filter(r=>r.suggestions&&r.suggestions.trim()&&r.suggestions.toLowerCase()!=='n/a'&&r.suggestions.toLowerCase()!=='none').map(r=>`
           <div class="note-item">
             <div class="note-author">${r.attendee} <span class="badge b${String(r.year).slice(-2)}">${r.year}</span></div>
             ${r.suggestions}
@@ -398,120 +564,304 @@ function showConf(key) {
       </div>
     </div>`;
 
-  // Year-over-Year chart
   charts.yoy = new Chart(document.getElementById('chartYoY'), {
     type: 'bar',
     data: {
       labels: byYear.map(b=>String(b.year)),
-      datasets: [{label:'Total Spend', data:byYear.map(b=>b.total), backgroundColor:byYear.map(b=>b.year===2025?'#3b82f6':'#22c55e'), borderRadius:5}]
+      datasets: [{label:'Total Spend', data:byYear.map(b=>b.total), backgroundColor:byYear.map(b=>b.year===2025?'#f8182d':'#6366f1'), borderRadius:5}]
     },
     options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+v.toLocaleString()}}}}
   });
 
-  // Breakdown chart
   const hasData = totFees+totAir+totMeals+totMileage+Math.max(totOther,0) > 0;
   if (hasData) {
     charts.breakdown = new Chart(document.getElementById('chartBreakdown'), {
       type: 'doughnut',
       data: {
         labels: ['Consultant Fees','Air Travel','Meals','Mileage','Other Expenses'],
-        datasets: [{data:[totFees,totAir,totMeals,totMileage,Math.max(totOther,0)], backgroundColor:['#6366f1','#3b82f6','#22c55e','#f59e0b','#ec4899'], borderWidth:2}]
+        datasets: [{data:[totFees,totAir,totMeals,totMileage,Math.max(totOther,0)], backgroundColor:['#f8182d','#6366f1','#e4cc99','#d97706','#0f172a'], borderWidth:2}]
       },
       options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}}}
     });
   }
 
-  // Histogram of individual totals
-  const totals = rows.filter(r=>r.total>0).map(r=>r.total).sort((a,b)=>a-b);
-  if (totals.length > 0) {
-    const labels = rows.filter(r=>r.total>0).sort((a,b)=>a.total-b.total).map(r=>r.attendee.split(' ').slice(-1)[0] + ' ' + r.year);
+  const filtRows = rows.filter(r=>r.total>0).sort((a,b)=>a.total-b.total);
+  if (filtRows.length > 0) {
     charts.hist = new Chart(document.getElementById('chartHist'), {
       type: 'bar',
-      data: {labels, datasets:[{label:'Total Billed', data:totals, backgroundColor:'#8b5cf6', borderRadius:4}]},
+      data: {labels:filtRows.map(r=>r.attendee.split(' ').slice(-1)[0]+' '+r.year), datasets:[{label:'Total Billed', data:filtRows.map(r=>r.total), backgroundColor:'#6366f1', borderRadius:4}]},
       options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+v.toLocaleString()}}}}
     });
   }
 }
 
-function setBudget(key, val) {
-  BUDGETS[key] = parseFloat(val) || 0;
-}
-
-function updateBudgetStatus(key, val, lastTotal) {
-  BUDGETS[key] = parseFloat(val) || 0;
-  const budget = BUDGETS[key];
+function updateBudgetStatus(key, val, netLastTotal) {
+  const budget = parseFloat(val) || 0;
+  const b = getBudgetsLS(); b[key] = budget; saveBudgetsLS(b);
   const statusEl = document.getElementById('budgetStatus');
   if (!statusEl || budget <= 0) { if(statusEl) statusEl.innerHTML = ''; return; }
-  const diff = budget - lastTotal;
+  const diff = budget - netLastTotal;
   const pct = Math.abs(Math.round(diff/budget*100));
   statusEl.innerHTML = diff >= 0
-    ? `<span class="bstatus under">✓ ${fmtN(diff)} under budget (${pct}%)</span>`
-    : `<span class="bstatus over">✗ ${fmtN(Math.abs(diff))} over budget (${pct}%)</span>`;
+    ? `<span class="bstatus under">&#10003; ${fmtN(diff)} under budget (${pct}%)</span>`
+    : `<span class="bstatus over">&#10007; ${fmtN(Math.abs(diff))} over budget (${pct}%)</span>`;
 }
 
-// ─── PRE-GENERATED PLANNING BRIEFS ───────────────────────────
+function updateSponsorship(key, year, val) {
+  const amount = parseFloat(val) || 0;
+  const s = getSponsorships();
+  s[key + '__' + year] = amount;
+  saveSponsorships(s);
+  buildSidebar();
+}
+
+// ─── PLANNING BRIEFS ──────────────────────────────────────────────────────────
 const PLANS = {
-"ABHE": `<h3>📋 ABHE — Planning Brief for Next Year</h3><p><strong>Based on:</strong> 2025 (Terry Stine, $2,486) + 2026 (Terry Stine, $4,247 — note: 2026 spiked due to a flight booking error, not typical costs)</p><h4>👤 Recommended Attendees</h4><p>Terry Stine should remain the primary attendee — he's built real credibility with college presidents and ABHE staff over multiple years, and the notes show it's paying off. Clay Perkins is a strong addition for the Advancement Leaders sub-conference (he already attended at $0 cost in 2025). Two people total is the right number.</p><h4>💰 Budget Estimate</h4><p>Target $2,500–3,000 (back to 2025 levels). The 2026 spike was entirely a preventable flight mistake. Breakdown: Terry's fee ~$1,025–1,125 | Air ~$500–600 (book early, verify AM/PM) | Hotel ~$600–700 (confirm whether ABHE board will subsidize a room again) | Meals ~$200–250 | Mileage ~$80.</p><h4>🧳 Logistics</h4><ul><li>Book flights immediately and triple-check departure times — the 2026 AM/PM error cost ~$400 extra.</li><li>Contact Carol Dibble / ABHE board ahead of time to confirm whether a subsidized hotel room is available.</li><li>Upgrade the pull-up display so FPM's name and logo appear above table height — currently hidden behind the table.</li><li>Bring college-specific materials only — church brochures do not resonate at ABHE.</li></ul><h4>🎯 Strategic Priorities</h4><ol><li>Continue breakfast meetings with college presidents — this is working and generating real leads.</li><li>Commission a college-focused brochure and one-pager separate from church materials.</li><li>Invest in quality swag (branded items that are visible and memorable — not generic).</li><li>ABHE is growing — stay consistent. Terry notes recognition increases every year.</li></ol><h4>✅ Action Items Before Conference</h4><ul><li>Design and print a college-specific brochure</li><li>Order quality swag with FPM branding</li><li>Upgrade pull-up display (logo above table height)</li><li>Contact ABHE board about subsidized hotel room</li><li>Book Terry's flights now — verify AM/PM departure carefully</li><li>Terry to bring copies of <em>Legacy Giving: The Goose and the Exotic Birds</em></li></ul>`,
-
-"CSN Forum": `<h3>📋 CSN Forum — Planning Brief for Next Year</h3><p><strong>Based on:</strong> 2025 (~$3,800 for 3 submissions) + 2026 (~$1,530 for 2 people). Dave and Kenn both call this one of FPM's best networking conferences.</p><h4>👤 Recommended Attendees</h4><p>Dave Hess (primary — manages the master contact list and has deep CSN relationships) + one additional person, ideally someone local or regional to keep costs down. Kenn showed in 2026 this can be done for $634. Three people (2025) was too many — two is the right number. Note: Chris attends in his CSN role separately and should not be counted as an FPM representative.</p><h4>💰 Budget Estimate</h4><p>$1,500–2,000 for two people. Dave's travel ~$900 | Second person $600 if regional. The 2025 overspend came from having three attendees plus Chris's separate submission.</p><h4>🧳 Logistics</h4><ul><li>Dave should attend the Stewardship Impact pre-session (7–8 hrs, lunch provided by a CSN partner — low cost, high value).</li><li>Coordinate with CSN about co-branded FPM/CSN logo bags — needs to be arranged months ahead.</li><li>Look into FPM's CSN membership ($300/yr) — could provide tools to share with partners who aren't CSN members.</li></ul><h4>🎯 Strategic Priorities</h4><ol><li>Collect video testimonials from current partner attendees — develop exactly 2 questions, target under 1 minute per answer. Bring recording equipment.</li><li>Build and segment the color-coded attendee list for targeted post-conference emails.</li><li>Explore sponsoring the Stewardship Impact pre-session lunch as an added promotional opportunity.</li><li>Deepen FPM's top-tier CSN partner status ($12K/yr) — look for new visibility opportunities.</li></ol><h4>✅ Action Items Before Conference</h4><ul><li>Dave: update and clean the master partner/prospect list</li><li>Develop 2 standard video testimonial questions and bring recording equipment</li><li>Reach out to CSN about co-branded bags and Stewardship Impact lunch sponsorship</li><li>Confirm CSN membership status and evaluate renewal value</li></ul>`,
-
-"XP Seminar": `<h3>📋 XP Seminar — Planning Brief for Next Year</h3><p><strong>Based on:</strong> 2025 (~$3,800 for Dave + Chris) + 2026 (~$2,760 for Dave + Chris). FPM has attended 4+ consecutive years as a platinum sponsor with a main-session speaking slot to ~100 senior church leaders.</p><h4>👤 Recommended Attendees</h4><p>Dave Hess (primary, 4+ years of relationships) + Chris Goulard if budget allows. Dave explicitly suggested one person may now suffice to reduce costs — evaluate whether the platinum speaking slot still needs two people. If both attend, coordinate lodging from day one to avoid duplicate submissions.</p><h4>💰 Budget Estimate</h4><p>$1,100–1,700 per person; $1,500–2,500 total depending on headcount. Include prepaid airfare. Platinum sponsorship cost should be factored in separately.</p><h4>🧳 Logistics</h4><ul><li><strong>Bring your own video projector</strong> — the hotel does not provide one, and this has been an issue multiple years.</li><li>Use two small pull-up banners — the large pop-up banner does not fit in the crowded main room.</li><li>Coordinate lodging booking from day one if both Dave and Chris attend.</li></ul><h4>🎯 Strategic Priorities</h4><ol><li><strong>Completely revamp the main session presentation</strong> — four years of similar content needs a WOW moment. Don't recycle estate planning basics.</li><li>Leverage the platinum sponsor speaking slot to ~100 senior church leaders — make it memorable.</li><li>Send segmented follow-up emails from the attendee list (by church size) within one week of the conference.</li><li>Build on the "even better than last year" personal connections from 2026.</li></ol><h4>✅ Action Items Before Conference</h4><ul><li>Develop a compelling, fresh main session presentation (not general estate planning)</li><li>Pack video projector and two small pull-up banners</li><li>Confirm platinum sponsorship and speaking slot</li><li>Request attendee list in advance for pre-conference outreach</li></ul>`,
-
-"XP Summit": `<h3>📋 XP Summit — Planning Brief for Next Year</h3><p><strong>Based on:</strong> 2025 (Dave + Steve Miles, $2,523) + 2026 (Chris solo, $2,228). ~150 XP attendees. Vendor presentations not allowed — relationship and brand presence are the play here.</p><h4>👤 Recommended Attendees</h4><p>Chris Goulard + one other (Dave Hess or Steve Miles in rotation). Note: 2027 may conflict with ICCON — Chris committed to coordinating with Dave for dual coverage. If conflict exists, prioritize XP Summit for Chris and ICCON for Dave.</p><h4>💰 Budget Estimate</h4><p>$2,200–2,500 for two people. Air travel is the biggest cost variable (Chris: $1,061 to Colleyville in 2026). Budget separately for a hosted dinner (~$400–600 for 8–10 XPs).</p><h4>🧳 Logistics</h4><ul><li>Prioritize high-traffic booth placement — 2025's spot between entrance and restrooms was excellent.</li><li>Set up a QR code giveaway to capture email contacts — worked in 2025 and should be continued.</li><li>Coordinate with Kevin Bates for the hosted dinner — the 2026 dinner was a conference highlight.</li><li>Leverage CDF Capital relationships — 2026 attendees already knew FPM through CDF.</li></ul><h4>🎯 Strategic Priorities</h4><ol><li>Host a dinner for 8–10 XPs — budget and plan this early, it was the highlight of 2026.</li><li>Send targeted email campaigns from the growing XP contact list before and after.</li><li>Check 2027 ICCON conflict and plan dual coverage with Dave.</li><li>Deepen the CDF Capital referral relationship — it's generating warm introductions.</li></ol><h4>✅ Action Items Before Conference</h4><ul><li>Confirm ICCON scheduling conflict — coordinate with Dave</li><li>Plan dinner venue + guest list with Kevin Bates (book early)</li><li>Set up QR code giveaway/registration landing page</li><li>Confirm FPM video for main session with organizers</li></ul>`,
-
-"IC3 Conference": `<h3>📋 IC3 Conference — Planning Brief for Next Year</h3><p><strong>Based on:</strong> 2025 (Traci + Liz, ~$2,658) + 2026 (Traci, $2,959). Strong and growing conference — attendees are already asking if FPM will return. Mix of churches, seminaries, and organizations.</p><h4>👤 Recommended Attendees</h4><p>Traci Bowman (primary manager, established relationships) + Liz Pimentel (Traci explicitly stated two people are needed; Liz has been effective here). This is the right team for IC3.</p><h4>💰 Budget Estimate</h4><p>$2,600–3,200 for both. Traci: fee ~$1,000–1,125 + expenses ~$1,500–1,800. Liz: primarily lodging (~$635 on FPM card in 2025) + minimal travel. Key: book all lodging through Grace/FPM card from day one — Liz had personal card issues in 2025. Capture all parking receipts immediately.</p><h4>🧳 Logistics</h4><ul><li>Book all lodging through Grace on the FPM card from day one — no personal card charges.</li><li>Capture parking receipts immediately — Liz lost one in 2025.</li><li>Traci and Liz: maintain a shared running list of leads during the conference.</li><li>Bring breakout session materials — organizers want FPM back, so lock in a speaking slot now.</li></ul><h4>🎯 Strategic Priorities</h4><ol><li><strong>Follow up on all 2025 and 2026 leads before attending again</strong> — arrive with warm relationships.</li><li>Secure a breakout speaking slot — organizers want FPM back, now is the time to ask.</li><li>Target larger churches and seminaries — qualify contacts by size early.</li><li>Build on Black church network connections — Traci's presence is an asset here.</li></ol><h4>✅ Action Items Before Conference</h4><ul><li>Follow up on all 2025 and 2026 leads (review the Liz/Chris/Traci email chain from 2026)</li><li>Contact IC3 organizers to lock in a breakout/speaking slot</li><li>Book lodging through Grace's FPM card now</li><li>Traci and Liz: set up shared lead-tracking sheet for the event</li></ul>`,
-
-"ICCON": `<h3>📋 ICCON — Planning Brief for Next Year</h3><p><strong>Based on:</strong> 2025 (Dave, $713) + 2026 (Dave, $405). Most attendees are not FPM's target, but the Coach Pre-Session and XP cohort are high-value segments. Lowest-cost conference on the calendar.</p><h4>👤 Recommended Attendees</h4><p>Dave Hess only — one person is sufficient given the limited target audience. Dave drives, keeping costs minimal. Note: may conflict with XP Summit in 2027 — coordinate with Chris on coverage.</p><h4>💰 Budget Estimate</h4><p>$400–750 (drive, 1–2 nights lodging, meals). Budget an extra $100–200 to potentially sponsor the XP cohort lunch to gain access. This is FPM's most cost-efficient conference.</p><h4>🧳 Logistics</h4><ul><li>Dave drives — avoids flight costs and is the right call.</li><li>Arrive in time for the Coach Pre-Session on day 1 — that's where the XP coaches are.</li><li>Bring workshop materials for the lunch/learn on day 1 of the full conference.</li><li>The XP cohort is now on a separate day from the Coach Session — try to attend both.</li></ul><h4>🎯 Strategic Priorities</h4><ol><li><strong>Get into the pre-conference XP cohort</strong> — offer to buy their lunch to gain access. This is the primary target group at ICCON.</li><li>Use the first conference evening (no scheduled events) to approach church groups informally as they debrief their day.</li><li>Continue building with IC coaches who are also XPs from the Coach Pre-Session.</li></ol><h4>✅ Action Items Before Conference</h4><ul><li>Contact ICCON organizers to confirm XP cohort schedule and request access (offer lunch sponsorship)</li><li>Check 2027 scheduling overlap with XP Summit — coordinate with Chris</li><li>Dave to confirm attendance and book lodging</li></ul>`,
-
-"Vineyard West": `<h3>📋 Vineyard West — Planning Brief for Next Year</h3><p><strong>Based on:</strong> 2025 (Dave + Chris, $2,601; Faith Church, Arvada CO). Conference is every other year and will not be held next year. 80%+ of Vineyard churches are below FPM's size threshold.</p><h4>🚫 Recommendation: Skip the Next Conference</h4><p>Both Dave and Chris concluded that attending Vineyard West again is not the best use of resources — 80%+ of churches are too small and the conference runs every other year. The real opportunity is at the national leadership level.</p><h4>🎯 What to Do Instead</h4><ol><li><strong>Pursue Chris Meekins' offer</strong> for an event specifically targeting Vineyard churches with 500+ attendees — far better ROI than the general conference.</li><li><strong>Schedule a dedicated meeting with Jason George</strong> (Vineyard USA Development Director) — he's a key relationship and doesn't require a conference setting.</li><li><strong>Explore the BPLA</strong> (Black Pastors and Leaders Association within Vineyard) — consider sending Traci Bowman to their leadership gathering.</li><li>Dave + Chris: outline a regional funding model concept for VineyardUSA leadership.</li></ol><h4>✅ Action Items</h4><ul><li>Follow up with Chris Meekins on the 500+ church leader event</li><li>Schedule a meeting with Jason George at Vineyard Cincinnati</li><li>Track when the BPLA leadership gathering is scheduled</li></ul>`,
-
-"Vineyard National": `<h3>📋 Vineyard National — Planning Brief for Next Year</h3><p><strong>Based on:</strong> 2025 (Dave + Chris + McWhorter, $1,684; Cincinnati, every other year). Dave's conclusion: "Probably no need to attend again as long as we can continue national-level conversations."</p><h4>🚫 Recommendation: Don't Attend the Next Conference</h4><p>80% of Vineyard churches are too small for FPM. The value was in accessing national leadership — and that relationship can be pursued directly without conference fees.</p><h4>🎯 What to Do Instead</h4><ol><li>Dave and Chris to have direct conversations with VineyardUSA leadership on developing a custom funding model for their regional structure — no conference needed.</li><li>Track the BPLA (Black Pastors and Leaders Association) leadership gathering — consider sending Traci Bowman.</li><li>If the relationship stalls, revisit attending the next cycle.</li></ol><h4>✅ Action Items</h4><ul><li>Dave + Chris: schedule a call with VineyardUSA national leadership to advance the regional model conversation</li><li>Track BPLA gathering dates for Traci Bowman</li></ul>`,
-
-"Spire": `<h3>📋 Spire — Planning Brief for Next Year</h3><p><strong>Based on:</strong> 2025 (Dave + Chris, $1,751; Southeast Christian Church, Louisville KY). Multiple current FPM partners attended and stopped by — it's a strong partner-presence conference. Booth placement in foyer was the main weakness.</p><h4>👤 Recommended Attendees</h4><p>Dave Hess + Chris Goulard — both add distinct value. Dave handles booth logistics and current partner relationships; Chris drives the XP evening event. This is the right two-person team.</p><h4>💰 Budget Estimate</h4><p>$1,800–2,200. Dave drives (~$160 mileage), Chris flies (~$520). Factor in larger sponsorship cost if upgrading. Budget $300–500 for an evening event.</p><h4>🧳 Logistics</h4><ul><li>Push for booth placement in the main session room where lunch is served — foyer placement in 2025 had very limited traffic.</li><li>Alternatively, use an offsite hospitality event on evening 2 to compensate.</li><li>Explore sponsorship upgrade for better placement or visibility.</li></ul><h4>🎯 Strategic Priorities</h4><ol><li><strong>Host an offsite evening event for XPs</strong> — Chris to coordinate with Steve Carter, targeting XPs from larger Christian movement churches. Top suggestion from both attendees.</li><li>Consider inviting Mike Prior — recognized by many current partners attending Spire.</li><li>Push for main-room booth placement as part of sponsorship terms.</li><li>Leverage current partners (Calvary CC, Southeast CC, Connection Pointe, etc.) for warm intros to new prospects.</li></ol><h4>✅ Action Items Before Conference</h4><ul><li>Chris + Steve Carter: plan the XP evening event — venue, guest list, invitations</li><li>Contact Spire organizers about sponsorship upgrade and booth relocation to main room</li><li>Invite Mike Prior</li><li>Dave: reach out to current partner attendees ahead of time for warm intros</li></ul>`,
-
-"Next Level": `<h3>📋 Next Level — Planning Brief for Next Year</h3><p><strong>Based on:</strong> 2026 (Kenn $1,227 + Chris $1,577 = $2,804; Compassion Christian Church, Savannah GA; every other year). Chris concluded: "Not a great conference to meet new churches. If we go next time, send Kenn only and skip the booth."</p><h4>👤 Recommended Attendees</h4><p>Kenn Edwards only — no booth, no second person. Chris explicitly confirmed this in his 2026 notes. Kenn's role is relationship management with Compassion CC, not prospecting. This cuts costs by more than half.</p><h4>💰 Budget Estimate</h4><p>~$650–900 for Kenn alone (fee ~$450 + travel). In 2026, Kenn's total was $1,227 with no air travel — driving is the right approach.</p><h4>🧳 Logistics</h4><ul><li>No booth or display materials needed — Kenn attends as a relationship manager, not an exhibitor.</li><li>Key contacts: Sara Roth (CFO, primary), Ken Philbeck (staff pastor), Marcus Johnson (Lead Pastor), Dale Bouchilon (Elders Chair).</li><li>Conference is every other year — confirm dates well in advance.</li></ul><h4>🎯 Strategic Priorities</h4><ol><li>Deepen the Compassion CC partnership — this is the primary goal.</li><li>Explore getting FPM a breakout or XP/stewardship session at the next conference (Kenn's suggestion).</li><li>Use conference dinners and informal time for relationship-building, not prospecting.</li></ol><h4>✅ Action Items Before Conference</h4><ul><li>Kenn: reconnect with Sara Roth and Ken Philbeck before the conference</li><li>Contact conference organizers about a potential FPM-led breakout session</li><li>Confirm conference dates (every other year — next occurrence TBD)</li></ul>`,
-
-"Dunham Summit": `<h3>📋 Dunham Summit — Planning Brief for Next Year</h3><p><strong>Based on:</strong> 2026 (Chris Goulard, $1,909; Orlando FL — first time attending). Next year: Anaheim, CA. Described as "lots of great contacts and relational connection time" — a highly successful debut.</p><h4>👤 Recommended Attendees</h4><p>Chris Goulard (primary — has all the key year-one relationships). Consider adding one relationship-builder who excels in informal networking. Jonathan Pitts and Rebecca Dominguez have committed to continuing introductions.</p><h4>💰 Budget Estimate</h4><p>~$2,000–2,400 (Anaheim carries higher hotel rates than Orlando). In 2026, Chris saved by staying off-site but paid ~$282 in Uber rides. For Anaheim, evaluate whether staying close to the venue is worth the hotel premium over rideshare costs — proximity may win.</p><h4>🧳 Logistics</h4><ul><li>Book early — Anaheim venues fill up fast.</li><li>Compare on-site vs. off-site hotel cost vs. rideshare for the week.</li><li>Follow up with Jonathan Pitts and Rebecca Dominguez before the conference to coordinate year-two introductions.</li></ul><h4>🎯 Strategic Priorities</h4><ol><li><strong>Follow up with Erik</strong> (Dunham capital campaign head) before Anaheim — he expressed strong interest in FPM's model. Advance this conversation now, don't wait for the conference.</li><li>Leverage Pitts and Dominguez for warm introductions to new contacts — they've already agreed to continue.</li><li>FPM is now a known entity at Dunham — use year two to deepen relationships started in year one.</li><li>Identify 5–8 target attendees in advance and reach out before arriving.</li></ol><h4>✅ Action Items Before Conference</h4><ul><li>Schedule a call with Erik to advance the FPM capital campaign conversation</li><li>Reach out to Jonathan Pitts and Rebecca Dominguez about year-two intro strategy</li><li>Research Anaheim venue and book hotel early</li><li>Identify 5–8 target attendees and send warm outreach before the conference</li></ul>`,
-
-"CSN Regional": `<h3>📋 CSN Regional — Planning Brief for Next Year</h3><p><strong>Based on:</strong> 2025 (Dave + Chris, $902 total; Journey Church, Avon OH — first regional CSN event ever). ~60 attendees from ~12 churches. FPM was a founding sponsor.</p><h4>👤 Recommended Attendees</h4><p>One FPM person in addition to Chris (who emcees and teaches in his CSN role). Dave is ideal — he handled all logistics in 2025 so Chris could focus on teaching. Whoever attends should be ready to run the table independently.</p><h4>💰 Budget Estimate</h4><p>~$500–700 for the support person (Dave drove in 2025). Sponsorship fee separate. Very low-cost, high-visibility event — FPM presents as a major player at a manageable price.</p><h4>🧳 Logistics</h4><ul><li><strong>Request table placement in the main session room</strong> where lunch is served — the 2025 foyer placement had very limited traffic. Make this a condition of sponsorship.</li><li>Consider arriving the night before — the 2025 dinner with Matt Gates, Leo, and Rachel produced a valuable connection with Denise Craig at The Church Network.</li><li>Dave handles all setup and logistics so Chris is free to focus on teaching and emceeing.</li></ul><h4>🎯 Strategic Priorities</h4><ol><li>Request main-room table placement as part of sponsorship terms — non-negotiable based on 2025 experience.</li><li>Follow up with Denise Craig at The Church Network from the 2025 connection.</li><li>Work with CSN to identify other regional events where FPM should be a founding sponsor.</li><li>Leverage Chris's teaching role to reinforce FPM's brand with all 60+ attendees.</li></ol><h4>✅ Action Items Before Conference</h4><ul><li>Follow up with Denise Craig (The Church Network) from 2025</li><li>Confirm with CSN whether another regional is planned and secure sponsorship + main-room table placement</li><li>Follow up with Matt Gates (Victory Church) from 2025</li><li>Coordinate Dave's logistics role so Chris can focus on teaching</li></ul>`
+"ABHE": `<h3>ABHE — Planning Brief</h3><p><strong>Based on:</strong> 2025 (Terry Stine, $2,486) + 2026 (Terry Stine, $4,247 — note: 2026 spiked due to a flight booking error)</p><h4>Recommended Attendees</h4><p>Terry Stine (primary — 2+ years of credibility with presidents) + D. Clay Perkins for the Advancement Leaders sub-conference. Two people total.</p><h4>Budget Estimate</h4><p>Target $2,500–3,000. Fee ~$1,025–1,125 | Air ~$500–600 (book early, verify AM/PM) | Hotel ~$600–700 | Meals ~$200–250 | Mileage ~$80.</p><h4>Logistics</h4><ul><li>Book flights immediately — the 2026 AM/PM error cost ~$400 extra.</li><li>Confirm whether ABHE board will subsidize a hotel room.</li><li>Upgrade pull-up display so FPM logo appears above table height.</li><li>Bring college-specific materials only — church brochures don't resonate.</li></ul><h4>Strategic Priorities</h4><ol><li>Continue breakfast meetings with college presidents — it's working.</li><li>Commission college-focused brochure separate from church materials.</li><li>Invest in quality swag with FPM branding.</li><li>Terry: bring copies of <em>Legacy Giving: The Goose and the Exotic Birds</em>.</li></ol>`,
+"CSN Forum": `<h3>CSN Forum — Planning Brief</h3><p><strong>Based on:</strong> 2025 (~$3,800, 3 people) + 2026 (~$1,530, 2 people). Dave and Kenn both call this FPM's best networking conference.</p><h4>Recommended Attendees</h4><p>Dave Hess + one regional person (Kenn showed $634 is doable in 2026). Three people was too many.</p><h4>Budget Estimate</h4><p>$1,500–2,000. Dave ~$900 | Second person ~$600 regional.</p><h4>Strategic Priorities</h4><ol><li>Collect video testimonials — develop 2 standard questions, bring recording equipment.</li><li>Build color-coded attendee list for targeted post-conference emails.</li><li>Explore Stewardship Impact pre-session sponsorship.</li><li>Evaluate CSN membership ($300/yr) and co-branded bags.</li></ol>`,
+"XP Seminar": `<h3>XP Seminar — Planning Brief</h3><p><strong>Based on:</strong> 2025 (~$3,800 Dave + Chris) + 2026 (~$2,760 Dave + Chris). Platinum sponsor with main-session speaking slot to ~100 senior leaders.</p><h4>Recommended Attendees</h4><p>Dave (primary, 4+ year relationships) + evaluate whether one person now suffices. Dave suggested reducing to one attendee.</p><h4>Budget Estimate</h4><p>$1,100–1,700 per person. Include prepaid airfare.</p><h4>Logistics</h4><ul><li><strong>Bring own video projector</strong> — not provided by hotel.</li><li>Two small pull-up banners only — large pop-up doesn't fit.</li></ul><h4>Strategic Priorities</h4><ol><li>Completely revamp main session presentation — 4 years of similar content needs a WOW moment.</li><li>Send segmented follow-up emails by church size within one week.</li></ol>`,
+"XP Summit": `<h3>XP Summit — Planning Brief</h3><p><strong>Based on:</strong> 2025 (Dave + Steve, $2,523) + 2026 (Chris solo, $2,228). ~150 XP attendees. Vendor presentations not allowed.</p><h4>Recommended Attendees</h4><p>Chris + one other (Dave or Steve in rotation). Note: 2027 may conflict with ICCON — coordinate coverage.</p><h4>Budget Estimate</h4><p>$2,200–2,500 total plus ~$400–600 for hosted dinner.</p><h4>Strategic Priorities</h4><ol><li>Host a dinner for 8–10 XPs — Kevin Bates to coordinate, book early.</li><li>Set up QR code giveaway to capture contact emails.</li><li>Check 2027 ICCON conflict and plan dual coverage with Dave.</li><li>Deepen CDF Capital referral relationship.</li></ol>`,
+"IC3 Conference": `<h3>IC3 Conference — Planning Brief</h3><p><strong>Based on:</strong> 2025 (Traci + Liz, ~$2,658) + 2026 (Traci, $2,959). Organizers want FPM back. Mix of churches, seminaries, and organizations.</p><h4>Recommended Attendees</h4><p>Traci Bowman + Liz Pimentel. Traci explicitly stated two people are needed.</p><h4>Budget Estimate</h4><p>$2,600–3,200 for both. Book all lodging through Grace/FPM card from day one.</p><h4>Strategic Priorities</h4><ol><li>Follow up on all 2025 and 2026 leads before attending again.</li><li>Secure a breakout speaking slot — organizers want FPM, ask now.</li><li>Maintain shared lead-tracking sheet during the event.</li></ol>`,
+"ICCON": `<h3>ICCON — Planning Brief</h3><p><strong>Based on:</strong> 2025 (Dave, $713) + 2026 (Dave, $405). Most attendees not FPM's target. FPM's most cost-efficient conference.</p><h4>Recommended Attendees</h4><p>Dave Hess only — drives, keeps costs minimal. May conflict with XP Summit 2027.</p><h4>Budget Estimate</h4><p>$400–750 plus $100–200 to sponsor XP cohort lunch.</p><h4>Strategic Priorities</h4><ol><li>Get into the pre-conference XP cohort — offer to buy their lunch.</li><li>Use first-evening informal time to approach church groups.</li></ol>`,
+"Vineyard West": `<h3>Vineyard West — Recommendation: Skip</h3><p>Conference is every other year. Both Dave and Chris concluded the ROI doesn't justify attendance — 80%+ of churches too small.</p><h4>What to Do Instead</h4><ol><li>Pursue Chris Meekins' offer for an event targeting 500+ Vineyard churches.</li><li>Schedule direct meeting with Jason George (Vineyard USA Development Director).</li><li>Explore BPLA (Black Pastors and Leaders Association within Vineyard) — consider Traci Bowman.</li></ol>`,
+"Vineyard National": `<h3>Vineyard National — Recommendation: Skip</h3><p>Every other year. Dave: "Probably no need to attend again if we can continue national-level conversations."</p><h4>What to Do Instead</h4><ol><li>Dave + Chris: direct conversations with VineyardUSA leadership on regional funding model.</li><li>Track BPLA gathering for Traci Bowman.</li></ol>`,
+"Spire": `<h3>Spire — Planning Brief</h3><p><strong>Based on:</strong> 2025 (Dave + Chris, $1,751). Multiple current partners attended. Booth placement in foyer was main weakness.</p><h4>Recommended Attendees</h4><p>Dave + Chris — both add distinct value.</p><h4>Budget Estimate</h4><p>$1,800–2,200 plus $300–500 for evening event.</p><h4>Strategic Priorities</h4><ol><li>Host offsite evening event for XPs — Chris to coordinate with Steve Carter.</li><li>Push for main-room booth placement as sponsorship condition.</li><li>Invite Mike Prior.</li><li>Leverage current partners for warm introductions.</li></ol>`,
+"Next Level": `<h3>Next Level — Planning Brief</h3><p><strong>Based on:</strong> 2026 (Kenn $1,227 + Chris $1,577). Every other year. Chris: "Not a great conference to meet new churches. Send Kenn only and skip the booth."</p><h4>Recommended Attendees</h4><p>Kenn Edwards only — no booth, no second person. Cuts costs by more than half.</p><h4>Budget Estimate</h4><p>~$650–900 for Kenn alone.</p><h4>Strategic Priorities</h4><ol><li>Deepen Compassion CC partnership — primary goal.</li><li>Explore getting FPM a breakout or stewardship session.</li></ol>`,
+"Dunham Summit": `<h3>Dunham Summit — Planning Brief</h3><p><strong>Based on:</strong> 2026 (Chris, $1,909; Orlando FL — first attendance). Next year: Anaheim, CA.</p><h4>Recommended Attendees</h4><p>Chris + possibly one relationship-builder. Jonathan Pitts and Rebecca Dominguez will continue introductions.</p><h4>Budget Estimate</h4><p>$2,000–2,400. Anaheim hotel rates higher — evaluate on-site vs. off-site.</p><h4>Strategic Priorities</h4><ol><li>Follow up with Erik (capital campaign) before Anaheim — don't wait for the conference.</li><li>Identify 5–8 target attendees and reach out in advance.</li><li>Book hotel early — Anaheim fills up.</li></ol>`,
+"CSN Regional": `<h3>CSN Regional — Planning Brief</h3><p><strong>Based on:</strong> 2025 (Dave + Chris, $902 total; Journey Church, Avon OH — first regional CSN event ever). FPM was a founding sponsor.</p><h4>Recommended Attendees</h4><p>One FPM person + Chris (who emcees in his CSN role).</p><h4>Budget Estimate</h4><p>~$500–700 for support person.</p><h4>Strategic Priorities</h4><ol><li>Request main-room table placement as sponsorship condition — non-negotiable based on 2025 foyer experience.</li><li>Follow up with Denise Craig (The Church Network) from 2025 dinner.</li><li>Work with CSN to identify other regional events for founding sponsorship.</li></ol>`
 };
 
-// ─── AI PLANNING ─────────────────────────────────────────────
 function openPlanModal(key) {
-  const confs = getConferences();
+  const DATA = getData();
+  const confs = getConferences(DATA);
   const conf = confs.find(c=>c.key===key);
   if (!conf) return;
-
   const modal = document.getElementById('planModal');
-  const sub = document.getElementById('planModalSub');
-  const body = document.getElementById('planModalBody');
-
-  sub.textContent = `Based on ${conf.rows.length} historical reports (${[...conf.years].sort().join(', ')})`;
+  document.getElementById('planModalSub').textContent = `Based on ${conf.rows.length} historical reports (${[...conf.years].sort().join(', ')})`;
   modal.classList.add('open');
-
-  // Remove any old copy button
-  const oldBtn = document.getElementById('copyPromptBtn');
-  if (oldBtn) oldBtn.remove();
-
   const plan = PLANS[key];
   if (plan) {
-    body.innerHTML = `<div class="modal-body" style="white-space:normal">${plan}</div>`;
+    document.getElementById('planModalBody').innerHTML = `<div class="modal-body" style="white-space:normal">${plan}</div>`;
   } else {
-    // Generic fallback for conferences without a pre-written brief
     const rows = conf.rows;
     const totalAll = rows.reduce((s,r)=>s+r.total,0);
-    const suggestions = rows.filter(r=>r.suggestions && r.suggestions.trim() && !['n/a','none','see dave','see daves'].some(x=>r.suggestions.toLowerCase().startsWith(x))).map(r=>`<li><strong>${r.attendee} (${r.year}):</strong> ${r.suggestions}</li>`).join('');
-    body.innerHTML = `<div class="modal-body" style="white-space:normal">
-      <h3>📋 ${key} — Planning Summary</h3>
+    const suggestions = rows.filter(r=>r.suggestions&&r.suggestions.trim()&&!['n/a','none'].some(x=>r.suggestions.toLowerCase().startsWith(x))).map(r=>`<li><strong>${r.attendee} (${r.year}):</strong> ${r.suggestions}</li>`).join('');
+    document.getElementById('planModalBody').innerHTML = `<div class="modal-body" style="white-space:normal">
+      <h3>${key} — Planning Summary</h3>
       <p><strong>Total historical spend:</strong> ${fmtN(totalAll)} across ${rows.length} reports</p>
       <p><strong>Attendees:</strong> ${[...new Set(rows.map(r=>r.attendee))].join(', ')}</p>
-      ${suggestions ? `<h4>💡 Team Suggestions from Past Years</h4><ul>${suggestions}</ul>` : ''}
-      <p style="color:var(--muted);font-size:12px;margin-top:16px">A detailed planning brief for this conference will be added in the next dashboard update.</p>
+      ${suggestions ? `<h4>Team Suggestions from Past Years</h4><ul>${suggestions}</ul>` : ''}
     </div>`;
   }
 }
 
-// ─── INIT ────────────────────────────────────────────────────
+// ─── ADMIN PANEL ──────────────────────────────────────────────────────────────
+let adminTabIndex = 0;
+function openAdmin() {
+  document.getElementById('adminOverlay').classList.add('open');
+  switchAdminTab(0);
+}
+function closeAdmin() {
+  document.getElementById('adminOverlay').classList.remove('open');
+  // Refresh after possible changes
+  buildSidebar();
+  if (currentConf) showConf(currentConf); else showOverview();
+}
+function adminOverlayClick(e) {
+  if (e.target === document.getElementById('adminOverlay')) closeAdmin();
+}
+function switchAdminTab(idx) {
+  adminTabIndex = idx;
+  document.querySelectorAll('.admin-tab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  const body = document.getElementById('adminBody');
+  if (idx===0) renderAdminNamesTab(body);
+  else if (idx===1) renderAdminSponsTab(body);
+  else if (idx===2) renderAdminBudgetsTab(body);
+  else renderAdminDataTab(body);
+}
+
+function renderAdminNamesTab(body) {
+  const overrides = getNameOverrides();
+  const rawNames = [...new Set(RAW.map(r=>r.conference))].sort();
+  body.innerHTML = `
+    <div class="admin-section">
+      <h3>Conference Name Manager</h3>
+      <p>Some conference names were entered slightly differently across reports. Use this to merge them into a single canonical name. Changes are saved immediately and persist across sessions.</p>
+      <div style="display:grid;grid-template-columns:20px 1fr 24px 1fr;gap:8px;align-items:center;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;padding:0 4px;">
+        <span>#</span><span>RAW NAME (as entered)</span><span></span><span>CANONICAL NAME (used in dashboard)</span>
+      </div>
+      <div id="nameRows">
+        ${rawNames.map((name,i) => {
+          const current = overrides[name] || normalize(name);
+          return `<div style="display:grid;grid-template-columns:20px 1fr 24px 1fr;gap:8px;align-items:center;margin-bottom:6px;">
+            <span style="font-size:11px;color:var(--muted)">${i+1}</span>
+            <div style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:5px;font-size:13px;">${name}</div>
+            <span style="text-align:center;color:var(--muted)">&#8594;</span>
+            <input type="text" value="${current}" data-raw="${name.replace(/"/g,'&quot;')}" onchange="saveNameOverride(this)" style="padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:13px;" placeholder="Canonical name...">
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-primary" onclick="applyNameOverrides()">&#10003; Apply Changes</button>
+        <button class="btn btn-outline" onclick="resetNameOverrides()">&#8635; Reset All to Default</button>
+        <span style="font-size:12px;color:var(--muted)" id="nameSaveMsg"></span>
+      </div>
+    </div>`;
+}
+
+function saveNameOverride(input) {
+  const raw = input.getAttribute('data-raw');
+  const canonical = input.value.trim();
+  const overrides = getNameOverrides();
+  if (!canonical || canonical === normalize(raw)) {
+    delete overrides[raw];
+  } else {
+    overrides[raw] = canonical;
+  }
+  saveNameOverrides(overrides);
+}
+
+function applyNameOverrides() {
+  buildSidebar();
+  if (currentConf) showConf(currentConf); else showOverview();
+  showToast('Conference names updated!');
+  document.getElementById('nameSaveMsg').textContent = 'Saved and applied.';
+  setTimeout(()=>{const m=document.getElementById('nameSaveMsg');if(m)m.textContent='';},3000);
+}
+
+function resetNameOverrides() {
+  if (!confirm('Reset all conference name overrides to defaults?')) return;
+  saveNameOverrides({});
+  switchAdminTab(0);
+  showToast('Name overrides reset.');
+}
+
+function renderAdminSponsTab(body) {
+  const DATA = getData();
+  const allConfs = Object.values(DATA.reduce((m,r)=>{
+    if(!m[r.confKey]) m[r.confKey]={key:r.confKey,years:new Set()};
+    m[r.confKey].years.add(r.year);
+    return m;
+  },{})).sort((a,b)=>a.key.localeCompare(b.key));
+  const sponsorships = getSponsorships();
+  body.innerHTML = `
+    <div class="admin-section">
+      <h3>Sponsorship Amounts</h3>
+      <p>Enter the sponsorship amount FPM received for each conference and year. This reduces the net cost shown in the dashboard and is saved across sessions.</p>
+      <table style="max-width:600px">
+        <thead><tr><th>Conference</th><th>Year</th><th class="money">Sponsorship Amount</th></tr></thead>
+        <tbody>
+          ${allConfs.map(c => [...c.years].sort().map(yr => {
+            const sk = c.key + '__' + yr;
+            const val = sponsorships[sk] || '';
+            return `<tr>
+              <td>${c.key}</td>
+              <td><span class="badge b${String(yr).slice(-2)}">${yr}</span></td>
+              <td class="money"><input type="number" placeholder="0.00" value="${val}" onchange="saveSponsorship('${c.key.replace(/'/g,"\\'")}", ${yr}, this.value)" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:130px;"></td>
+            </tr>`;
+          }).join('')).join('')}
+        </tbody>
+      </table>
+      <p style="margin-top:12px;font-size:12px;color:var(--muted)">Changes are saved automatically as you type.</p>
+    </div>`;
+}
+
+function saveSponsorship(key, year, val) {
+  const amount = parseFloat(val) || 0;
+  const s = getSponsorships();
+  if (amount === 0) delete s[key + '__' + year];
+  else s[key + '__' + year] = amount;
+  saveSponsorships(s);
+  showToast('Sponsorship saved!');
+  buildSidebar();
+}
+
+function renderAdminBudgetsTab(body) {
+  const DATA = getData();
+  const allConfs = Object.values(DATA.reduce((m,r)=>{
+    if(!m[r.confKey]) m[r.confKey]={key:r.confKey};
+    return m;
+  },{}));
+  allConfs.sort((a,b)=>a.key.localeCompare(b.key));
+  const budgets = getBudgetsLS();
+  body.innerHTML = `
+    <div class="admin-section">
+      <h3>Annual Budgets</h3>
+      <p>Set a budget per conference. This is compared against the most recent year's net cost (after sponsorships) on the conference detail page.</p>
+      <table style="max-width:500px">
+        <thead><tr><th>Conference</th><th class="money">Annual Budget</th></tr></thead>
+        <tbody>
+          ${allConfs.map(c => {
+            const val = budgets[c.key] || '';
+            return `<tr>
+              <td>${c.key}</td>
+              <td class="money"><input type="number" placeholder="0.00" value="${val}" onchange="saveBudgetAdmin('${c.key.replace(/'/g,"\\'")}", this.value)" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:130px;"></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      <p style="margin-top:12px;font-size:12px;color:var(--muted)">Changes are saved automatically. Budgets persist across sessions.</p>
+    </div>`;
+}
+
+function saveBudgetAdmin(key, val) {
+  const amount = parseFloat(val) || 0;
+  const b = getBudgetsLS();
+  if (amount === 0) delete b[key];
+  else b[key] = amount;
+  saveBudgetsLS(b);
+  showToast('Budget saved!');
+}
+
+function renderAdminDataTab(body) {
+  const DATA = getData();
+  body.innerHTML = `
+    <div class="admin-section">
+      <h3>Data Review</h3>
+      <p>All ${DATA.length} conference report entries. The Canonical Name column shows how the conference is grouped in the dashboard (editable on the Conference Names tab).</p>
+      <div class="data-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>Attendee</th>
+              <th>Raw Conference Name</th>
+              <th>Canonical Name</th>
+              <th>Type</th>
+              <th class="money">Fees</th>
+              <th class="money">Expenses</th>
+              <th class="money">Total</th>
+              <th>Dates</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${DATA.sort((a,b)=>b.year-a.year||a.confKey.localeCompare(b.confKey)||a.attendee.localeCompare(b.attendee)).map(r => `
+              <tr>
+                <td><span class="badge b${String(r.year).slice(-2)}">${r.year}</span></td>
+                <td>${r.attendee}</td>
+                <td style="color:var(--muted);font-size:12px">${r.conference}</td>
+                <td><strong>${r.confKey}</strong></td>
+                <td style="font-size:11px">${r.type}</td>
+                <td class="money">${r.fees>0?fmtN(r.fees):'—'}</td>
+                <td class="money">${r.expenses>0?fmtN(r.expenses):'—'}</td>
+                <td class="money"><strong>${fmtN(r.total)}</strong></td>
+                <td style="font-size:11px;white-space:nowrap">${r.dates}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
 buildSidebar();
 showOverview();
 </script>
