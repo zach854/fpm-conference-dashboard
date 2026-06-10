@@ -251,7 +251,11 @@ function getSponsorships() { return lsGet('fpm_sponsorships', {}); }
 function saveSponsorships(v) { lsSet('fpm_sponsorships', v); }
 function getBudgetsLS() { return lsGet('fpm_budgets', {}); }
 function saveBudgetsLS(v) { lsSet('fpm_budgets', v); }
-function getLeads() { return lsGet('fpm_leads', {}); }
+function getLeads() {
+  // Merge baked (from Google Sheets) with any manual localStorage overrides
+  const stored = lsGet('fpm_leads', {});
+  return {...BAKED_LEADS, ...stored};
+}
 function saveLeads(v) { lsSet('fpm_leads', v); }
 
 // ─── YEAR FILTER ──────────────────────────────────────────────
@@ -287,6 +291,25 @@ function normalize(name) {
   if (n.includes('dunham')) return 'Dunham Summit';
   return name;
 }
+
+// ─── BAKED LEADS (auto-calculated from Google Sheets "7. Conferences" tab) ────
+// Each entry = count of named "Potential Partner" fields per conference per year
+const BAKED_LEADS = {
+  // 2025
+  'ABHE__2025': 10,
+  'ICCON__2025': 2,
+  'IC3 Conference__2025': 2,
+  'CSN Regional__2025': 1,
+  'Vineyard West__2025': 2,
+  'Vineyard East__2025': 1,
+  'Spire__2025': 3,
+  'ABHE Advancement__2025': 9,
+  // 2026
+  'Dunham Summit__2026': 7,
+  'Next Level__2026': 1,
+  'ABHE__2026': 7,
+  'XP Summit__2026': 6
+};
 
 // Rebuild DATA with fresh normalization each time (needed when overrides change)
 function getData() {
@@ -389,7 +412,7 @@ function showOverview() {
       <div class="stat-card"><div class="stat-label">Total Conferences</div><div class="stat-value">${confs.length}</div><div class="stat-sub">across 2025–2026</div></div>
       <div class="stat-card"><div class="stat-label">2025 Total Spend</div><div class="stat-value">${fmtN(total25)}</div><div class="stat-sub">${events25} unique conferences, ${d25.length} reports</div></div>
       <div class="stat-card"><div class="stat-label">2026 Total Spend</div><div class="stat-value">${fmtN(total26)}</div><div class="stat-sub">${events26} unique conferences, ${d26.length} reports</div></div>
-      <div class="stat-card" style="cursor:pointer" onclick="openAdmin();switchAdminTab(4)" title="Click to add leads in Admin"><div class="stat-label">&#127919; Total Leads</div><div class="stat-value" style="color:var(--accent)">${totalLeads||'—'}</div><div class="stat-sub">${leads25?leads25+' in 2025':''}${leads25&&leads26?' · ':''}${leads26?leads26+' in 2026':''}${!totalLeads?'click to enter leads':''}</div></div>`;
+      <div class="stat-card" style="cursor:pointer" onclick="openAdmin();switchAdminTab(4)" title="From Google Sheets · click to override"><div class="stat-label">&#127919; Total Leads</div><div class="stat-value" style="color:var(--accent)">${totalLeads||'—'}</div><div class="stat-sub">${leads25?leads25+' in 2025':''}${leads25&&leads26?' · ':''}${leads26?leads26+' in 2026':''}${totalLeads?' · from Google Sheets':'—'}</div></div>`;
   } else {
     const numConfs = confs.length;
     const numReports = displayData.length;
@@ -400,7 +423,7 @@ function showOverview() {
       <div class="stat-card"><div class="stat-label">${activeYear} Conferences</div><div class="stat-value">${numConfs}</div><div class="stat-sub">${numReports} attendee reports</div></div>
       <div class="stat-card"><div class="stat-label">${activeYear} Total Spend</div><div class="stat-value">${fmtN(displayTotal)}</div><div class="stat-sub">all conference costs</div></div>
       <div class="stat-card"><div class="stat-label">Net Cost (${activeYear})</div><div class="stat-value">${fmtN(netTotal)}</div><div class="stat-sub">after sponsorships</div></div>
-      <div class="stat-card" style="cursor:pointer" onclick="openAdmin();switchAdminTab(4)" title="Click to add leads in Admin"><div class="stat-label">&#127919; ${activeYear} Leads</div><div class="stat-value" style="color:var(--accent)">${leadsYear||'—'}</div><div class="stat-sub">${leadsYear?'potential partners':'click to enter leads'}</div></div>`;
+      <div class="stat-card" style="cursor:pointer" onclick="openAdmin();switchAdminTab(4)" title="From Google Sheets · click to override"><div class="stat-label">&#127919; ${activeYear} Leads</div><div class="stat-value" style="color:var(--accent)">${leadsYear||'—'}</div><div class="stat-sub">${leadsYear?'potential partners · from Google Sheets':'no leads recorded'}</div></div>`;
   }
 
   const mc = document.getElementById('mainContent');
@@ -803,7 +826,7 @@ function renderAdminLeadsTab(body) {
   body.innerHTML = `
     <div class="admin-section">
       <h3>&#127919; Potential Partners (Leads)</h3>
-      <p>Enter the number of potential partners (leads) collected at each conference. This count appears in the dashboard stats and summary table.</p>
+      <p>Leads are <strong>auto-calculated from Google Sheets</strong> (Post-Event Submissions → "7. Conferences" tab) by counting filled "Potential Partner" fields. You can override any value below — your override will be saved and used instead.</p>
       ${totalLeads > 0 ? `<p style="font-weight:600;color:var(--accent)">Total leads across all conferences: ${totalLeads}</p>` : ''}
       <table style="max-width:600px">
         <thead><tr><th>Conference</th><th>Year</th><th style="text-align:center">Leads / Potential Partners</th></tr></thead>
@@ -825,9 +848,8 @@ function renderAdminLeadsTab(body) {
 
 function saveLeadCount(key, year, val) {
   const count = parseInt(val) || 0;
-  const l = getLeads();
-  if (count === 0) delete l[key + '__' + year];
-  else l[key + '__' + year] = count;
+  const l = lsGet('fpm_leads', {}); // only touch localStorage, not baked values
+  l[key + '__' + year] = count; // always store, even 0 (explicit override)
   saveLeads(l);
   showToast('Leads saved!');
   buildSidebar();
