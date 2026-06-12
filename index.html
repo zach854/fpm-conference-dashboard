@@ -94,7 +94,7 @@ tr:hover td{background:var(--bg);}
 .note-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;max-height:280px;overflow-y:auto;}
 .note-card h3{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;}
 .note-item{background:var(--bg);border-radius:5px;padding:9px 11px;margin-bottom:8px;font-size:12px;line-height:1.5;}
-.note-author{font-size:11px;font-weight:700;color:var(--accent);margin-bottom:3px;}
+.note-author{font-size:11px;font-weight:700;color:var(--text);margin-bottom:3px;}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;align-items:center;justify-content:center;}
 .modal-overlay.open{display:flex;}
 .modal{background:#fff;border-radius:10px;padding:24px;width:700px;max-width:95vw;max-height:88vh;overflow-y:auto;border-top:4px solid var(--accent);}
@@ -412,7 +412,7 @@ function showOverview() {
       <div class="stat-card"><div class="stat-label">Total Conferences</div><div class="stat-value">${confs.length}</div><div class="stat-sub">across 2025–2026</div></div>
       <div class="stat-card"><div class="stat-label">2025 Total Spend</div><div class="stat-value">${fmtN(total25)}</div><div class="stat-sub">${events25} unique conferences, ${d25.length} reports</div></div>
       <div class="stat-card"><div class="stat-label">2026 Total Spend</div><div class="stat-value">${fmtN(total26)}</div><div class="stat-sub">${events26} unique conferences, ${d26.length} reports</div></div>
-      <div class="stat-card" style="cursor:pointer" onclick="openAdmin();switchAdminTab(4)" title="From Google Sheets · click to override"><div class="stat-label">&#127919; Total Leads</div><div class="stat-value" style="color:var(--accent)">${totalLeads||'—'}</div><div class="stat-sub">${leads25?leads25+' in 2025':''}${leads25&&leads26?' · ':''}${leads26?leads26+' in 2026':''}${totalLeads?' · from Google Sheets':'—'}</div></div>`;
+      <div class="stat-card" style="cursor:pointer" onclick="openAdmin();switchAdminTab(4)" title="From Google Sheets · click to override"><div class="stat-label">&#127919; Total Leads</div><div class="stat-value">${totalLeads||'—'}</div><div class="stat-sub">${leads25?leads25+' in 2025':''}${leads25&&leads26?' · ':''}${leads26?leads26+' in 2026':''}${totalLeads?' · from Google Sheets':'—'}</div></div>`;
   } else {
     const numConfs = confs.length;
     const numReports = displayData.length;
@@ -423,7 +423,7 @@ function showOverview() {
       <div class="stat-card"><div class="stat-label">${activeYear} Conferences</div><div class="stat-value">${numConfs}</div><div class="stat-sub">${numReports} attendee reports</div></div>
       <div class="stat-card"><div class="stat-label">${activeYear} Total Spend</div><div class="stat-value">${fmtN(displayTotal)}</div><div class="stat-sub">all conference costs</div></div>
       <div class="stat-card"><div class="stat-label">Net Cost (${activeYear})</div><div class="stat-value">${fmtN(netTotal)}</div><div class="stat-sub">after sponsorships</div></div>
-      <div class="stat-card" style="cursor:pointer" onclick="openAdmin();switchAdminTab(4)" title="From Google Sheets · click to override"><div class="stat-label">&#127919; ${activeYear} Leads</div><div class="stat-value" style="color:var(--accent)">${leadsYear||'—'}</div><div class="stat-sub">${leadsYear?'potential partners · from Google Sheets':'no leads recorded'}</div></div>`;
+      <div class="stat-card" style="cursor:pointer" onclick="openAdmin();switchAdminTab(4)" title="From Google Sheets · click to override"><div class="stat-label">&#127919; ${activeYear} Leads</div><div class="stat-value">${leadsYear||'—'}</div><div class="stat-sub">${leadsYear?'potential partners · from Google Sheets':'no leads recorded'}</div></div>`;
   }
 
   const mc = document.getElementById('mainContent');
@@ -447,9 +447,9 @@ function showOverview() {
             <td><strong>${c.key}</strong></td>
             <td class="money">${t25>0?fmtN(t25):'—'}</td>
             <td class="money">${t26>0?fmtN(t26):'—'}</td>
-            <td class="money" style="color:var(--accent)">${spons>0?fmtN(spons):'—'}</td>
+            <td class="money" style="color:var(--muted)">${spons>0?fmtN(spons):'—'}</td>
             <td class="money"><strong>${fmtN(net)}</strong></td>
-            <td style="text-align:center;font-weight:600;color:${confLeads>0?'var(--accent)':'var(--muted)'}">${confLeads||'—'}</td>
+            <td style="text-align:center;font-weight:600;color:${confLeads>0?'var(--text)':'var(--muted)'}">${confLeads||'—'}</td>
             <td>${[...c.years].sort().map(y=>`<span class="badge b${String(y).slice(-2)}">${y}</span>`).join(' ')}</td>
           </tr>`;
         }).join('')}</tbody>
@@ -550,8 +550,8 @@ function showConf(key) {
         <span>&#128197; ${years.join(', ')}</span>
         <span>&#128101; ${attendees.slice(0,3).join(', ')}${attendees.length>3?' +'+(attendees.length-3)+' more':''}</span>
         <span>&#128176; ${fmtN(totalAll)} total spend</span>
-        ${spons > 0 ? `<span style="color:var(--accent)">&#128181; ${fmtN(spons)} sponsorship fee (${lastYear})</span>` : ''}
-        ${totalConfLeads > 0 ? `<span style="color:var(--accent)">&#127919; ${totalConfLeads} leads total</span>` : ''}
+        ${spons > 0 ? `<span>&#128181; ${fmtN(spons)} sponsorship fee (${lastYear})</span>` : ''}
+        ${totalConfLeads > 0 ? `<span>&#127919; ${totalConfLeads} leads total</span>` : ''}
       </div>
       <div class="detail-actions">
         <button class="btn btn-ai" onclick="openPlanModal('${safeKey}')">&#10024; Plan for Next Year</button>
@@ -561,16 +561,16 @@ function showConf(key) {
 
     <div class="budget-bar">
       <label>&#128202; Budget for ${lastYear}:</label>
-      <input type="number" id="budgetInput" placeholder="Enter amount..." value="${budget||''}" oninput="updateBudgetStatus('${safeKey}', this.value, ${netLastYr})">
-      <span id="budgetStatus">${bStatusHtml}</span>
+      <span style="font-weight:600;font-size:13px">${budget>0?fmtN(budget):'Not set'}</span>
+      ${bStatusHtml}
+      <button class="btn btn-outline" style="padding:3px 10px;font-size:11px;margin-left:auto" onclick="openAdmin();switchAdminTab(3)">Edit in Admin ↗</button>
     </div>
 
-    <div class="spons-bar">
-      <label>&#128181; Conference sponsorship fee (${lastYear}):</label>
-      <input type="number" id="sponsInput" placeholder="$0.00" value="${spons||''}">
-      <button class="btn btn-primary" style="padding:5px 14px;font-size:13px" onclick="saveSponsorship('${safeKey}', ${lastYear}, document.getElementById('sponsInput').value);this.textContent='Saved ✓';setTimeout(()=>this.textContent='Save',1500)">Save</button>
-      <span class="spons-note" id="sponsNote">${spons>0?'Saved: '+fmtN(spons)+' — adds to total cost':' adds to total cost; saved until updated'}</span>
-    </div>
+    ${spons > 0 ? `<div class="spons-bar">
+      <label>&#128181; Sponsorship fee (${lastYear}):</label>
+      <span style="font-weight:600;font-size:13px">${fmtN(spons)}</span>
+      <button class="btn btn-outline" style="padding:3px 10px;font-size:11px;margin-left:auto" onclick="openAdmin();switchAdminTab(2)">Edit in Admin ↗</button>
+    </div>` : ''}
 
     <div class="detail-grid">
       <div class="panel">
@@ -641,7 +641,7 @@ function showConf(key) {
       type: 'doughnut',
       data: {
         labels: ['Consultant Fees','Air Travel','Meals','Mileage','Other Expenses'],
-        datasets: [{data:[totFees,totAir,totMeals,totMileage,Math.max(totOther,0)], backgroundColor:['#f8182d','#6366f1','#e4cc99','#d97706','#0f172a'], borderWidth:2}]
+        datasets: [{data:[totFees,totAir,totMeals,totMileage,Math.max(totOther,0)], backgroundColor:['#0f172a','#1e3a5f','#2d6a9f','#5b9dd9','#93c5fd'], borderWidth:2, borderColor:'#fff'}]
       },
       options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}}}
     });
