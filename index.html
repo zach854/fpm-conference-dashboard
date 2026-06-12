@@ -81,6 +81,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .panel h3{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text);}
 table{width:100%;border-collapse:collapse;font-size:13px;}
 th{text-align:left;padding:7px 10px;border-bottom:2px solid var(--border);font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+th.sortable{cursor:pointer;user-select:none;}th.sortable:hover{color:var(--text);}.sort-ind{font-size:10px;opacity:.6;}
 td{padding:7px 10px;border-bottom:1px solid var(--border);}
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:var(--bg);}
@@ -448,18 +449,20 @@ function showOverview() {
     <div class="stats-row">${statsHtml}</div>
     <div class="charts-row">
       <div class="chart-card"><h3>Spend by Month</h3><div class="chart-wrap"><canvas id="chartYears"></canvas></div></div>
-      <div class="chart-card"><h3>Top Conferences by Spend</h3><div class="chart-wrap"><canvas id="chartConfs"></canvas></div></div>
+      <div class="chart-card"><h3>Top Conferences by Spend</h3><p style="font-size:11px;color:var(--muted);margin:-6px 0 8px">Travel &amp; registration costs only — excludes sponsorship fees</p><div class="chart-wrap"><canvas id="chartConfs"></canvas></div></div>
     </div>
     <div class="panel">
       <h3>${activeYear ? activeYear+' Conferences — Budget Tracking' : 'All Conferences — Summary'}</h3>
-      <table>
+      <table id="overviewTable">
         <thead><tr>
-          <th>Conference</th>
-          ${activeYear ? `<th class="money">${activeYear} Spend</th><th class="money">Sponsorship</th><th class="money">Net Cost</th><th class="money">Budget</th><th class="money">vs Budget</th>` : `<th class="money">2025 Spend</th><th class="money">2026 Spend</th><th class="money">Sponsorship Fees</th><th class="money">Net Cost</th>`}
-          <th style="text-align:center">&#127919; Leads</th>
+          <th class="sortable" onclick="sortOverviewTable(0)">Conference <span class="sort-ind">↕</span></th>
+          ${activeYear
+            ? `<th class="money sortable" onclick="sortOverviewTable(1)">${activeYear} Spend <span class="sort-ind">↕</span></th><th class="money sortable" onclick="sortOverviewTable(2)">Sponsorship <span class="sort-ind">↕</span></th><th class="money sortable" onclick="sortOverviewTable(3)">Net Cost <span class="sort-ind">↕</span></th><th class="money sortable" onclick="sortOverviewTable(4)">Budget <span class="sort-ind">↕</span></th><th class="money sortable" onclick="sortOverviewTable(5)">vs Budget <span class="sort-ind">↕</span></th>`
+            : `<th class="money sortable" onclick="sortOverviewTable(1)">2025 Spend <span class="sort-ind">↕</span></th><th class="money sortable" onclick="sortOverviewTable(2)">2026 Spend <span class="sort-ind">↕</span></th><th class="money sortable" onclick="sortOverviewTable(3)">Sponsorship Fees <span class="sort-ind">↕</span></th><th class="money sortable" onclick="sortOverviewTable(4)">Net Cost <span class="sort-ind">↕</span></th>`}
+          <th class="sortable" style="text-align:center" onclick="sortOverviewTable(${activeYear?6:5})">&#127919; Leads <span class="sort-ind">↕</span></th>
           ${!activeYear ? '<th>Years</th>' : ''}
         </tr></thead>
-        <tbody>${confs.map(c=>{
+        <tbody id="overviewTbody">${confs.map(c=>{
           const budgets = getBudgetsLS();
           const confBudget = parseFloat(budgets[c.key]||0);
           if (activeYear) {
@@ -472,13 +475,13 @@ function showOverview() {
             const deltaText = delta===null?'—':delta>=0?`&#10003; ${fmtN(delta)} under`:`&#10007; ${fmtN(Math.abs(delta))} over`;
             const confLeads = parseInt(leads[c.key+'__'+activeYear]||0);
             return `<tr onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="cursor:pointer">
-              <td><strong>${c.key}</strong></td>
-              <td class="money">${yearSpend>0?fmtN(yearSpend):'—'}</td>
-              <td class="money" style="color:var(--muted)">${yearSpons>0?fmtN(yearSpons):'—'}</td>
-              <td class="money"><strong>${fmtN(yearNet)}</strong></td>
-              <td class="money" style="color:var(--muted)">${confBudget>0?fmtN(confBudget):'—'}</td>
-              <td class="money" style="font-weight:600;color:${deltaColor}">${deltaText}</td>
-              <td style="text-align:center;font-weight:600;color:${confLeads>0?'var(--text)':'var(--muted)'}">${confLeads||'—'}</td>
+              <td data-sort="${c.key}"><strong>${c.key}</strong></td>
+              <td class="money" data-sort="${yearSpend}">${yearSpend>0?fmtN(yearSpend):'—'}</td>
+              <td class="money" data-sort="${yearSpons}" style="color:var(--muted)">${yearSpons>0?fmtN(yearSpons):'—'}</td>
+              <td class="money" data-sort="${yearNet}"><strong>${fmtN(yearNet)}</strong></td>
+              <td class="money" data-sort="${confBudget}" style="color:var(--muted)">${confBudget>0?fmtN(confBudget):'—'}</td>
+              <td class="money" data-sort="${delta===null?-9999999:delta}" style="font-weight:600;color:${deltaColor}">${deltaText}</td>
+              <td data-sort="${confLeads}" style="text-align:center;font-weight:600;color:${confLeads>0?'var(--text)':'var(--muted)'}">${confLeads||'—'}</td>
             </tr>`;
           } else {
             const t25=totalByYear(c.rows,2025), t26=totalByYear(c.rows,2026);
@@ -487,12 +490,12 @@ function showOverview() {
             const net=totalAll+spons;
             const confLeads = Object.keys(leads).filter(k=>k.startsWith(c.key+'__')).reduce((s,k)=>s+(parseInt(leads[k])||0),0);
             return `<tr onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="cursor:pointer">
-              <td><strong>${c.key}</strong></td>
-              <td class="money">${t25>0?fmtN(t25):'—'}</td>
-              <td class="money">${t26>0?fmtN(t26):'—'}</td>
-              <td class="money" style="color:var(--muted)">${spons>0?fmtN(spons):'—'}</td>
-              <td class="money"><strong>${fmtN(net)}</strong></td>
-              <td style="text-align:center;font-weight:600;color:${confLeads>0?'var(--text)':'var(--muted)'}">${confLeads||'—'}</td>
+              <td data-sort="${c.key}"><strong>${c.key}</strong></td>
+              <td class="money" data-sort="${t25}">${t25>0?fmtN(t25):'—'}</td>
+              <td class="money" data-sort="${t26}">${t26>0?fmtN(t26):'—'}</td>
+              <td class="money" data-sort="${spons}" style="color:var(--muted)">${spons>0?fmtN(spons):'—'}</td>
+              <td class="money" data-sort="${net}"><strong>${fmtN(net)}</strong></td>
+              <td data-sort="${confLeads}" style="text-align:center;font-weight:600;color:${confLeads>0?'var(--text)':'var(--muted)'}">${confLeads||'—'}</td>
               <td>${[...c.years].sort().map(y=>`<span class="badge b${String(y).slice(-2)}">${y}</span>`).join(' ')}</td>
             </tr>`;
           }
@@ -1007,6 +1010,27 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// ─── SORTABLE TABLE ───────────────────────────────────────────
+let _sortCol = -1, _sortDir = 1;
+function sortOverviewTable(col) {
+  const tbody = document.getElementById('overviewTbody');
+  if (!tbody) return;
+  if (_sortCol === col) _sortDir *= -1; else { _sortCol = col; _sortDir = 1; }
+  document.querySelectorAll('#overviewTable th.sortable').forEach((th, i) => {
+    const ind = th.querySelector('.sort-ind');
+    if (ind) ind.textContent = i === col ? (_sortDir === 1 ? ' ↑' : ' ↓') : ' ↕';
+  });
+  const rows = [...tbody.querySelectorAll('tr')];
+  rows.sort((a, b) => {
+    const aV = a.cells[col]?.dataset.sort ?? '';
+    const bV = b.cells[col]?.dataset.sort ?? '';
+    const aN = parseFloat(aV), bN = parseFloat(bV);
+    if (!isNaN(aN) && !isNaN(bN)) return (aN - bN) * _sortDir;
+    return aV.localeCompare(bV) * _sortDir;
+  });
+  rows.forEach(r => tbody.appendChild(r));
 }
 
 // ─── INIT ─────────────────────────────────────────────────────
