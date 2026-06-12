@@ -419,11 +419,28 @@ function showOverview() {
     const totalSponsYear = Object.keys(sponsorships).filter(k=>k.endsWith('__'+activeYear)).reduce((s,k)=>s+(parseFloat(sponsorships[k])||0),0);
     const netTotal = displayTotal + totalSponsYear;
     const leadsYear = Object.keys(leads).filter(k=>k.endsWith('__'+activeYear)).reduce((s,k)=>s+(parseInt(leads[k])||0),0);
+    // Budget tracking
+    const budgets = getBudgetsLS();
+    const confKeysInYear = [...new Set(displayData.map(r=>r.confKey))];
+    const budgetedConfs = confKeysInYear.filter(k=>parseFloat(budgets[k]||0)>0);
+    const totalBudget = budgetedConfs.reduce((s,k)=>s+(parseFloat(budgets[k])||0),0);
+    const budgetedNet = budgetedConfs.reduce((s,k)=>{
+      const rows = displayData.filter(r=>r.confKey===k);
+      const spend = rows.reduce((rs,r)=>rs+r.total,0);
+      const spons = parseFloat(sponsorships[k+'__'+activeYear]||0);
+      return s+spend+spons;
+    },0);
+    const budgetDelta = totalBudget - budgetedNet;
+    const budgetPct = totalBudget>0 ? Math.abs(Math.round(budgetDelta/totalBudget*100)) : 0;
+    const budgetColor = totalBudget===0?'var(--muted)':budgetDelta>=0?'var(--green)':'var(--red)';
+    const budgetBorder = totalBudget===0?'var(--border)':budgetDelta>=0?'var(--green)':'var(--red)';
+    const budgetLabel = totalBudget===0?'—':budgetDelta>=0?`&#10003; ${fmtN(budgetDelta)} under`:`&#10007; ${fmtN(Math.abs(budgetDelta))} over`;
+    const budgetSub = totalBudget>0?`${fmtN(budgetedNet)} spent vs ${fmtN(totalBudget)} budgeted (${budgetPct}%)`:`Set budgets in Admin to track`;
     statsHtml = `
-      <div class="stat-card"><div class="stat-label">${activeYear} Conferences</div><div class="stat-value">${numConfs}</div><div class="stat-sub">${numReports} attendee reports</div></div>
-      <div class="stat-card"><div class="stat-label">${activeYear} Total Spend</div><div class="stat-value">${fmtN(displayTotal)}</div><div class="stat-sub">all conference costs</div></div>
-      <div class="stat-card"><div class="stat-label">Net Cost (${activeYear})</div><div class="stat-value">${fmtN(netTotal)}</div><div class="stat-sub">after sponsorships</div></div>
-      <div class="stat-card" style="cursor:pointer" onclick="openAdmin();switchAdminTab(4)" title="From Google Sheets · click to override"><div class="stat-label">&#127919; ${activeYear} Leads</div><div class="stat-value">${leadsYear||'—'}</div><div class="stat-sub">${leadsYear?'potential partners · from Google Sheets':'no leads recorded'}</div></div>`;
+      <div class="stat-card"><div class="stat-label">${activeYear} Conferences</div><div class="stat-value">${numConfs}</div><div class="stat-sub">${numReports} reports · ${leadsYear||0} leads</div></div>
+      <div class="stat-card"><div class="stat-label">${activeYear} Total Spend</div><div class="stat-value">${fmtN(displayTotal)}</div><div class="stat-sub">gross conference costs</div></div>
+      <div class="stat-card"><div class="stat-label">Net Cost (after sponsorships)</div><div class="stat-value">${fmtN(netTotal)}</div><div class="stat-sub">${fmtN(totalSponsYear>0?totalSponsYear:0)} in sponsorship fees</div></div>
+      <div class="stat-card" style="border-top-color:${budgetBorder};cursor:pointer" onclick="openAdmin();switchAdminTab(3)" title="Click to edit budgets in Admin"><div class="stat-label">&#128202; ${activeYear} Budget</div><div class="stat-value" style="color:${budgetColor};font-size:18px">${budgetLabel}</div><div class="stat-sub">${budgetSub}</div></div>`;
   }
 
   const mc = document.getElementById('mainContent');
@@ -434,24 +451,51 @@ function showOverview() {
       <div class="chart-card"><h3>Top Conferences by Spend</h3><div class="chart-wrap"><canvas id="chartConfs"></canvas></div></div>
     </div>
     <div class="panel">
-      <h3>All Conferences — Summary${activeYear ? ' ('+activeYear+')' : ''}</h3>
+      <h3>${activeYear ? activeYear+' Conferences — Budget Tracking' : 'All Conferences — Summary'}</h3>
       <table>
-        <thead><tr><th>Conference</th><th class="money">2025 Spend</th><th class="money">2026 Spend</th><th class="money">Sponsorship Fees</th><th class="money">Net Cost</th><th style="text-align:center">&#127919; Leads</th><th>Years</th></tr></thead>
+        <thead><tr>
+          <th>Conference</th>
+          ${activeYear ? `<th class="money">${activeYear} Spend</th><th class="money">Sponsorship</th><th class="money">Net Cost</th><th class="money">Budget</th><th class="money">vs Budget</th>` : `<th class="money">2025 Spend</th><th class="money">2026 Spend</th><th class="money">Sponsorship Fees</th><th class="money">Net Cost</th>`}
+          <th style="text-align:center">&#127919; Leads</th>
+          ${!activeYear ? '<th>Years</th>' : ''}
+        </tr></thead>
         <tbody>${confs.map(c=>{
-          const t25=totalByYear(c.rows,2025), t26=totalByYear(c.rows,2026);
-          const totalAll=c.rows.reduce((s,r)=>s+r.total,0);
-          const spons=getSponsorshipForConf(c.key);
-          const net=totalAll+spons;
-          const confLeads = Object.keys(leads).filter(k=>k.startsWith(c.key+'__')).reduce((s,k)=>s+(parseInt(leads[k])||0),0);
-          return `<tr onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="cursor:pointer">
-            <td><strong>${c.key}</strong></td>
-            <td class="money">${t25>0?fmtN(t25):'—'}</td>
-            <td class="money">${t26>0?fmtN(t26):'—'}</td>
-            <td class="money" style="color:var(--muted)">${spons>0?fmtN(spons):'—'}</td>
-            <td class="money"><strong>${fmtN(net)}</strong></td>
-            <td style="text-align:center;font-weight:600;color:${confLeads>0?'var(--text)':'var(--muted)'}">${confLeads||'—'}</td>
-            <td>${[...c.years].sort().map(y=>`<span class="badge b${String(y).slice(-2)}">${y}</span>`).join(' ')}</td>
-          </tr>`;
+          const budgets = getBudgetsLS();
+          const confBudget = parseFloat(budgets[c.key]||0);
+          if (activeYear) {
+            const yearRows = c.rows.filter(r=>r.year===activeYear);
+            const yearSpend = yearRows.reduce((s,r)=>s+r.total,0);
+            const yearSpons = parseFloat(sponsorships[c.key+'__'+activeYear]||0);
+            const yearNet = yearSpend + yearSpons;
+            const delta = confBudget > 0 ? confBudget - yearNet : null;
+            const deltaColor = delta===null?'var(--muted)':delta>=0?'var(--green)':'var(--red)';
+            const deltaText = delta===null?'—':delta>=0?`&#10003; ${fmtN(delta)} under`:`&#10007; ${fmtN(Math.abs(delta))} over`;
+            const confLeads = parseInt(leads[c.key+'__'+activeYear]||0);
+            return `<tr onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="cursor:pointer">
+              <td><strong>${c.key}</strong></td>
+              <td class="money">${yearSpend>0?fmtN(yearSpend):'—'}</td>
+              <td class="money" style="color:var(--muted)">${yearSpons>0?fmtN(yearSpons):'—'}</td>
+              <td class="money"><strong>${fmtN(yearNet)}</strong></td>
+              <td class="money" style="color:var(--muted)">${confBudget>0?fmtN(confBudget):'—'}</td>
+              <td class="money" style="font-weight:600;color:${deltaColor}">${deltaText}</td>
+              <td style="text-align:center;font-weight:600;color:${confLeads>0?'var(--text)':'var(--muted)'}">${confLeads||'—'}</td>
+            </tr>`;
+          } else {
+            const t25=totalByYear(c.rows,2025), t26=totalByYear(c.rows,2026);
+            const totalAll=c.rows.reduce((s,r)=>s+r.total,0);
+            const spons=getSponsorshipForConf(c.key);
+            const net=totalAll+spons;
+            const confLeads = Object.keys(leads).filter(k=>k.startsWith(c.key+'__')).reduce((s,k)=>s+(parseInt(leads[k])||0),0);
+            return `<tr onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="cursor:pointer">
+              <td><strong>${c.key}</strong></td>
+              <td class="money">${t25>0?fmtN(t25):'—'}</td>
+              <td class="money">${t26>0?fmtN(t26):'—'}</td>
+              <td class="money" style="color:var(--muted)">${spons>0?fmtN(spons):'—'}</td>
+              <td class="money"><strong>${fmtN(net)}</strong></td>
+              <td style="text-align:center;font-weight:600;color:${confLeads>0?'var(--text)':'var(--muted)'}">${confLeads||'—'}</td>
+              <td>${[...c.years].sort().map(y=>`<span class="badge b${String(y).slice(-2)}">${y}</span>`).join(' ')}</td>
+            </tr>`;
+          }
         }).join('')}</tbody>
       </table>
     </div>`;
@@ -966,8 +1010,7 @@ function showToast(msg) {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────
-buildSidebar();
-showOverview();
+setYear(2026); // default to current year
 </script>
 </body>
 </html>
