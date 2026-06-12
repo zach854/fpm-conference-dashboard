@@ -144,6 +144,7 @@ tr:hover td{background:var(--bg);}
 .data-table-wrap td input:focus{outline:1px solid var(--accent);border-radius:3px;}
 .toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;border-left:4px solid var(--gold);}
 .toast.show{opacity:1;}
+@keyframes spin{to{transform:rotate(360deg);}}
 .green-text{color:var(--green);}
 .section-divider{border:none;border-top:1px solid var(--border);margin:16px 0;}
 </style>
@@ -158,6 +159,7 @@ tr:hover td{background:var(--bg);}
     <button class="yr-btn" id="yrBtn2026" onclick="setYear(2026)">2026</button>
   </div>
   <div class="hright">
+    <span id="loadingBadge" style="display:none;align-items:center;gap:5px;font-size:12px;color:var(--muted);background:var(--card);border:1px solid var(--border);padding:3px 10px;border-radius:20px;"><span style="display:inline-block;animation:spin 1s linear infinite;">↻</span> Refreshing data…</span>
     <span class="sub">Post-Event Reports &nbsp;|&nbsp; Select a conference</span>
     <button class="btn-admin" onclick="openAdmin()">⚙ Admin</button>
   </div>
@@ -205,8 +207,8 @@ tr:hover td{background:var(--bg);}
 <div class="toast" id="toast"></div>
 
 <script>
-// ─── RAW DATA ─────────────────────────────────────────────────
-const RAW = [
+// ─── RAW DATA (baked fallback — replaced by live fetch on load) ─
+let RAW = [
 {"year":2025,"attendee":"Terry Eugene Stine","conference":"ABHE","location":"Orlando, FL","dates":"Feb 11-14","type":"Field Representative","managed":"Yes","fees":1025,"expenses":1461.22,"total":2486.22,"mileage":78.4,"airTravel":526.96,"meals":259.52,"expenseNotes":"Airport Parking; hotel billed to ABHE board","feeNotes":"","summary":"Well worth the time, effort and expense. Takes time to develop reputation. Many staff shift from one college to another which is a plus.","suggestions":"Need to change pull-up display to have name/logo at top. Need quality swag. Need focused brochures for colleges vs churches."},
 {"year":2025,"attendee":"Dave Hess","conference":"CSN Forum","location":"","dates":"March 3-5, 2025","type":"Employee (Full-Time)","managed":"No","fees":0,"expenses":1159.97,"total":1159.97,"mileage":37.8,"airTravel":0,"meals":69.39,"expenseNotes":"","feeNotes":"","summary":"Materials shipped from CSN. Identified potential partners, current partners via color-coded attendee list.","suggestions":"Great opportunity to collect video testimonials. Develop two short questions. Consider CSN membership ($300/yr). Could provide CSN tools to partners."},
 {"year":2025,"attendee":"Dave Hess","conference":"XP Seminar","location":"","dates":"Feb 25-27, 2025","type":"Employee (Full-Time)","managed":"Yes","fees":0,"expenses":1855.22,"total":1855.22,"mileage":37.8,"airTravel":0,"meals":278.61,"expenseNotes":"Prepaid airfare was $329.46","feeNotes":"","summary":"Attached XP Attendee list with color-coded churches. Will send targeted emails by size.","suggestions":"Fourth year at this conference. Need to revamp approach and workshop content. Need WOW factor for platinum partner main session. Has alternated estate planning info each year."},
@@ -253,11 +255,131 @@ function saveSponsorships(v) { lsSet('fpm_sponsorships', v); }
 function getBudgetsLS() { return lsGet('fpm_budgets', {}); }
 function saveBudgetsLS(v) { lsSet('fpm_budgets', v); }
 function getLeads() {
-  // Merge baked (from Google Sheets) with any manual localStorage overrides
+  const base = LIVE_LEADS || BAKED_LEADS;
   const stored = lsGet('fpm_leads', {});
-  return {...BAKED_LEADS, ...stored};
+  return {...base, ...stored};
 }
 function saveLeads(v) { lsSet('fpm_leads', v); }
+
+// ─── LIVE GOOGLE SHEETS FETCH ─────────────────────────────────
+const SHEET_URLS = {
+  2025: 'https://docs.google.com/spreadsheets/d/1772LsSejFqUzHMY5jnoDimXiVJllHsA4Dl7PnFqc8nM/gviz/tq?tqx=out:csv&sheet=7.+Conferences',
+  2026: 'https://docs.google.com/spreadsheets/d/1WfIqqOMwv_wMthPaMqpvikL-xcE9eMktpzesx8JlLf8/gviz/tq?tqx=out:csv&sheet=7.+Conferences'
+};
+let LIVE_LEADS = null;
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"' && text[i+1] === '"') { field += '"'; i++; }
+      else if (ch === '"') { inQ = false; }
+      else { field += ch; }
+    } else {
+      if (ch === '"') { inQ = true; }
+      else if (ch === ',') { row.push(field); field = ''; }
+      else if (ch === '\n') {
+        row.push(field); field = '';
+        if (row.some(v => v.trim())) rows.push(row);
+        row = [];
+      } else if (ch !== '\r') { field += ch; }
+    }
+  }
+  row.push(field);
+  if (row.some(v => v.trim())) rows.push(row);
+  return rows;
+}
+
+function parseMoney(s) { return parseFloat((s || '').replace(/[$,]/g, '')) || 0; }
+
+function csvRowToRaw(headers, values, year) {
+  const get = n => { const i = headers.indexOf(n); return i >= 0 ? (values[i] || '') : ''; };
+
+  const fees = parseMoney(get('Total Consultant Fees:')) || parseMoney(get('Total Consultant Fees: 2'));
+  const totalExpenses = parseMoney(get('Total Expenses:')) || parseMoney(get('Total Expenses: 3'));
+  const total = parseMoney(get('Total Amount Billed:')) || (fees + totalExpenses);
+  const mileage = parseMoney(get('Mileage Total (70 cents per mile):'));
+  const airTravel = parseMoney(get('Air Travel:'));
+  const meals = parseMoney(get('Meals:'));
+
+  // Collect potential & current partners
+  const potentialPartners = [];
+  for (let i = 1; i <= 10; i++) {
+    const key = i === 1 ? 'Potential Partner #1' : `Potential Partner #${i}`;
+    const v = get(key).trim();
+    if (v) potentialPartners.push(v);
+  }
+  const currentPartners = [];
+  for (let i = 1; i <= 10; i++) {
+    const key = i === 1 ? 'Current Partner #1' : `Current Partner #${i}`;
+    const v = get(key).trim();
+    if (v) currentPartners.push(v);
+  }
+
+  // Full raw object: every column in the CSV
+  const fullData = {};
+  headers.forEach((h, i) => { fullData[h] = values[i] || ''; });
+  fullData._potentialPartners = potentialPartners;
+  fullData._currentPartners = currentPartners;
+
+  return {
+    year,
+    attendee: get('Your Name:'),
+    conference: normalize(get('Conference Name:')),
+    location: get('Conference Location:'),
+    dates: get('Conference Date(s):'),
+    type: get('Consultant Type:'),
+    managed: get('Did You Manage this Conference?'),
+    fees, expenses: totalExpenses, total,
+    mileage, airTravel, meals,
+    expenseNotes: get('Expense Notes:'),
+    feeNotes: get('Consultant Fee Notes'),
+    summary: get('Summary/Overview Notes:'),
+    suggestions: get('Suggestions:'),
+    _fullData: fullData
+  };
+}
+
+async function loadLiveData() {
+  const badge = document.getElementById('loadingBadge');
+  if (badge) badge.style.display = 'inline-flex';
+  try {
+    const fetched = await Promise.all(
+      Object.entries(SHEET_URLS).map(async ([yr, url]) => {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`Sheet ${yr} HTTP ${resp.status}`);
+        const text = await resp.text();
+        const rows = parseCSV(text);
+        if (rows.length < 2) return [];
+        const headers = rows[0];
+        return rows.slice(1)
+          .map(vals => csvRowToRaw(headers, vals, parseInt(yr)))
+          .filter(r => r.attendee && r.conference);
+      })
+    );
+    const liveRows = fetched.flat();
+    if (liveRows.length > 0) {
+      RAW = liveRows;
+      // Auto-compute leads from live data
+      const lm = {};
+      liveRows.forEach(r => {
+        const k = `${r.conference}__${r.year}`;
+        lm[k] = (lm[k] || 0) + (r._fullData._potentialPartners?.length || 0);
+      });
+      LIVE_LEADS = lm;
+      buildSidebar();
+      const cur = document.querySelector('.nav-item.active')?.dataset?.key;
+      if (cur && cur !== '__overview__') showConf(cur);
+      else showOverview();
+    }
+  } catch(e) {
+    console.warn('Live sheet load failed, using baked data:', e);
+  } finally {
+    if (badge) badge.style.display = 'none';
+  }
+}
 
 // ─── YEAR FILTER ──────────────────────────────────────────────
 let activeYear = null;
@@ -1019,51 +1141,225 @@ function viewConfPDF(key) {
   if (!rows.length) { showToast('No data found.'); return; }
   const years = [...new Set(rows.map(r=>r.year))].sort().join(', ');
   const fmt2 = n => '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtMoney = s => { const v = parseFloat((s||'').replace(/[$,]/g,'')); return isNaN(v)||v===0?'—':fmt2(v); };
+  const nz = s => (s||'').trim() && (s||'').trim() !== 'n/a' && (s||'').trim() !== 'N/A' ? s.trim() : null;
+
   let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${key} — Post-Event Submissions</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a1a;max-width:820px;margin:0 auto;padding:28px 24px;font-size:13px;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a1a;max-width:860px;margin:0 auto;padding:28px 24px;font-size:13px;}
     h1{font-size:22px;font-weight:700;border-bottom:3px solid #f8182d;padding-bottom:10px;margin-bottom:4px;}
     .meta{color:#64748b;font-size:12px;margin-bottom:24px;}
-    .report{border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin-bottom:20px;page-break-inside:avoid;}
-    .report-title{font-size:15px;font-weight:700;color:#0f172a;padding-bottom:10px;margin-bottom:12px;border-bottom:1px solid #e2e8f0;}
-    .section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;margin:14px 0 7px;}
-    .row{display:flex;gap:8px;margin-bottom:5px;}
-    .lbl{font-weight:600;color:#64748b;min-width:150px;flex-shrink:0;}
-    .val{color:#1a1a1a;}
-    .block{background:#f8fafc;border-radius:5px;padding:9px 12px;margin-top:4px;line-height:1.65;white-space:pre-wrap;}
-    table{width:100%;border-collapse:collapse;margin-top:4px;}
-    td,th{padding:5px 8px;border:1px solid #e2e8f0;font-size:12px;}
-    th{background:#f8fafc;font-weight:600;text-align:right;}th:first-child{text-align:left;}td:not(:first-child){text-align:right;}
-    @media print{body{padding:12px;}.report{page-break-inside:avoid;}}
+    .report{border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin-bottom:24px;page-break-inside:avoid;}
+    .report-title{font-size:15px;font-weight:700;color:#0f172a;padding-bottom:10px;margin-bottom:12px;border-bottom:2px solid #e2e8f0;display:flex;justify-content:space-between;align-items:baseline;}
+    .report-title .sub{font-size:12px;font-weight:400;color:#64748b;}
+    .sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;margin:16px 0 8px;padding-top:14px;border-top:1px solid #f1f5f9;}
+    .sec:first-of-type{border-top:none;padding-top:0;margin-top:0;}
+    .row{display:flex;gap:8px;margin-bottom:6px;}
+    .lbl{font-weight:600;color:#64748b;min-width:160px;flex-shrink:0;font-size:12px;}
+    .val{color:#1a1a1a;line-height:1.5;}
+    .block{background:#f8fafc;border-radius:5px;padding:9px 12px;margin-top:4px;line-height:1.7;white-space:pre-wrap;color:#1e293b;}
+    .partner-card{background:#f8fafc;border-radius:5px;padding:8px 12px;margin-bottom:6px;border-left:3px solid #0f172a;}
+    .partner-name{font-weight:700;font-size:13px;color:#0f172a;}
+    .partner-org{color:#475569;font-size:12px;margin-top:2px;}
+    .partner-notes{color:#64748b;font-size:12px;margin-top:3px;font-style:italic;}
+    table{width:100%;border-collapse:collapse;margin-top:6px;}
+    td,th{padding:6px 10px;border:1px solid #e2e8f0;font-size:12px;}
+    th{background:#f8fafc;font-weight:600;text-align:right;}th:first-child{text-align:left;}
+    td:not(:first-child){text-align:right;}
+    .total-row td{font-weight:700;background:#0f172a;color:#fff;}
+    a{color:#0f172a;}
+    @media print{body{padding:12px;}.report{page-break-inside:avoid;break-inside:avoid;}}
   </style></head><body>
   <h1>${key}</h1>
-  <div class="meta">Post-Event Submissions &nbsp;·&nbsp; ${years} &nbsp;·&nbsp; ${rows.length} report${rows.length!==1?'s':''} &nbsp;·&nbsp; Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>`;
+  <div class="meta">Post-Event Submissions &nbsp;·&nbsp; ${years} &nbsp;·&nbsp; ${rows.length} submission${rows.length!==1?'s':''} &nbsp;·&nbsp; Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>`;
 
   rows.forEach(r => {
+    const fd = r._fullData; // full CSV data if available
+    const get = fd ? (n => (fd[n]||'').trim()) : () => '';
+
     html += `<div class="report">
-      <div class="report-title">${r.attendee} &nbsp;·&nbsp; ${r.year} &nbsp;·&nbsp; ${r.dates}${r.location?' &nbsp;·&nbsp; '+r.location:''}</div>
-      <div class="section">Overview</div>
+      <div class="report-title">
+        <span>${r.attendee} &nbsp;·&nbsp; ${r.year}</span>
+        <span class="sub">${r.dates}${r.location?' &nbsp;·&nbsp; '+r.location:''}</span>
+      </div>`;
+
+    // ── OVERVIEW ──
+    html += `<div class="sec">Overview</div>
       <div class="row"><span class="lbl">Conference:</span><span class="val">${r.conference}</span></div>
       <div class="row"><span class="lbl">Role:</span><span class="val">${r.type}</span></div>
       <div class="row"><span class="lbl">FPM Managed:</span><span class="val">${r.managed||'—'}</span></div>
-      <div class="section">Cost Breakdown</div>
-      <table>
-        <thead><tr><th>Category</th><th>Amount</th></tr></thead>
-        <tbody>
-          <tr><td>Consultant Fees</td><td>${r.fees>0?fmt2(r.fees):'—'}</td></tr>
-          <tr><td>Air Travel</td><td>${r.airTravel>0?fmt2(r.airTravel):'—'}</td></tr>
-          <tr><td>Meals</td><td>${r.meals>0?fmt2(r.meals):'—'}</td></tr>
-          <tr><td>Mileage</td><td>${r.mileage>0?r.mileage+' mi':'—'}</td></tr>
-          <tr><td>Other Expenses</td><td>${Math.max(0,r.expenses-r.airTravel-r.meals-r.mileage)>0?fmt2(Math.max(0,r.expenses-r.airTravel-r.meals-r.mileage)):'—'}</td></tr>
-          <tr style="font-weight:700"><td>Total Billed</td><td>${fmt2(r.total)}</td></tr>
-        </tbody>
-      </table>
-      ${r.expenseNotes?`<div class="section">Expense Notes</div><div class="block">${r.expenseNotes}</div>`:''}
-      ${r.feeNotes?`<div class="section">Fee Notes</div><div class="block">${r.feeNotes}</div>`:''}
-      ${r.summary&&r.summary.trim()&&r.summary.toLowerCase()!=='n/a'?`<div class="section">Summary</div><div class="block">${r.summary}</div>`:''}
-      ${r.suggestions&&r.suggestions.trim()&&r.suggestions.toLowerCase()!=='n/a'&&r.suggestions.toLowerCase()!=='none'?`<div class="section">Suggestions</div><div class="block">${r.suggestions}</div>`:''}
-    </div>`;
+      <div class="row"><span class="lbl">Attendee Email:</span><span class="val">${get('Your Email:')||'—'}</span></div>`;
+    if (fd) {
+      const subDate = get('Submission Date');
+      const payroll = get('Payroll');
+      if (subDate) html += `<div class="row"><span class="lbl">Submitted:</span><span class="val">${subDate}</span></div>`;
+      if (payroll) html += `<div class="row"><span class="lbl">Payroll Date:</span><span class="val">${payroll}</span></div>`;
+    }
+
+    // ── MATERIALS ──
+    const matMap = {
+      'FPM Brochures': get('Materials Used: >> FPM Brochures >> Quantity'),
+      'Para Church Brochure': get('Materials Used: >> Para Church Brochure >> Quantity'),
+      'Partner Brochure': get('Materials Used: >> Partner Brochure >> Quantity'),
+      'Why Brochures': get('Materials Used: >> Why Brochures >> Quantity'),
+      'Funding Model Postcard': get('Materials Used: >> Funding Model Postcard >> Quantity'),
+      'Partner Postcard': get('Materials Used: >> Partner Postcard >> Quantity'),
+      'Postcard Flyer': get('Materials Used: >> Postcard Flyer >> Quantity'),
+      'Planning Guides': get('Materials Used: >> Planning Guides >> Quantity') || get('Materials Used: >> Planning Guides >> Quantity 2'),
+      'Notetaking Outlines': get('Materials Used: >> Notetaking Outlines >> Quantity'),
+      'Church Executive / Prior': get('Materials Used: >> Church Executive / Prior >> Quantity') || get('Materials Used: >> Church Executive / Prior >> Quantity 2'),
+      'Christian Standard / Perkins': get('Materials Used: >> Christian Standard / Perkins >> Quantity') || get('Materials Used: >> Christian Standard / Perkins >> Quantity 2'),
+      'Christian Academia / Perkins': get('Materials Used: >> Christian Academia / Perkins >> Quantity') || get('Materials Used: >> Christian Academia / Perkins >> Quantity 2'),
+      'SWAG': get('Materials Used: >> SWAG >> Quantity'),
+      'Other Materials': get('Materials Used: >> Other >> Quantity') || get('Materials Used: >> Other >> Quantity 2') || get('Materials Used: >> Other >> Quantity 3') || get('Materials Used: >> Other >> Quantity 4'),
+    };
+    const usedMats = Object.entries(matMap).filter(([,v]) => v && v.trim());
+    const matNotes = get('Materials Notes:');
+    if (fd && (usedMats.length || matNotes)) {
+      html += `<div class="sec">Materials Used</div>`;
+      if (usedMats.length) {
+        html += `<table><thead><tr><th style="text-align:left">Material</th><th>Quantity</th></tr></thead><tbody>`;
+        usedMats.forEach(([name,qty]) => { html += `<tr><td>${name}</td><td style="text-align:right">${qty}</td></tr>`; });
+        html += `</tbody></table>`;
+      }
+      if (matNotes) html += `<div class="row" style="margin-top:8px"><span class="lbl">Notes:</span><span class="val">${matNotes}</span></div>`;
+    }
+
+    // ── POTENTIAL PARTNERS ──
+    const potPartners = fd?._potentialPartners || [];
+    if (potPartners.length) {
+      html += `<div class="sec">Potential Partners (${potPartners.length})</div>`;
+      potPartners.forEach(p => {
+        const cName = (p.match(/Contact Name:\s*([^\n]+)/)||[])[1]?.trim()||'';
+        const org = (p.match(/Partner Affiliation:\s*([^\n]+)/)||[])[1]?.trim()||'';
+        const notes = (p.match(/Notes\/Details:\s*([\s\S]*)/)||[])[1]?.trim()||'';
+        html += `<div class="partner-card">
+          ${cName?`<div class="partner-name">${cName}</div>`:''}
+          ${org?`<div class="partner-org">${org}</div>`:''}
+          ${notes?`<div class="partner-notes">${notes}</div>`:''}
+        </div>`;
+      });
+    }
+
+    // ── CURRENT PARTNERS ──
+    const curPartners = fd?._currentPartners || [];
+    if (curPartners.length) {
+      html += `<div class="sec">Current Partners Contacted (${curPartners.length})</div>`;
+      curPartners.forEach(p => {
+        const cName = (p.match(/Contact Name:\s*([^\n]+)/)||[])[1]?.trim()||'';
+        const org = (p.match(/Partner Affiliation:\s*([^\n]+)/)||[])[1]?.trim()||'';
+        const notes = (p.match(/Notes\/Details:\s*([\s\S]*)/)||[])[1]?.trim()||'';
+        html += `<div class="partner-card" style="border-left-color:#059669;">
+          ${cName?`<div class="partner-name">${cName}</div>`:''}
+          ${org?`<div class="partner-org">${org}</div>`:''}
+          ${notes?`<div class="partner-notes">${notes}</div>`:''}
+        </div>`;
+      });
+    }
+
+    // ── NOTES ──
+    const summ = r.summary?.trim() || get('Summary/Overview Notes:');
+    const sugg = r.suggestions?.trim() || get('Suggestions:');
+    const impr = get('Improvements:');
+    if (nz(summ)||nz(sugg)||nz(impr)) {
+      html += `<div class="sec">Notes &amp; Observations</div>`;
+      if (nz(summ)) html += `<div class="row"><span class="lbl" style="padding-top:2px">Summary:</span></div><div class="block">${summ}</div>`;
+      if (nz(sugg)) html += `<div class="row" style="margin-top:8px"><span class="lbl" style="padding-top:2px">Suggestions:</span></div><div class="block">${sugg}</div>`;
+      if (nz(impr)) html += `<div class="row" style="margin-top:8px"><span class="lbl" style="padding-top:2px">Improvements:</span></div><div class="block">${impr}</div>`;
+    }
+
+    // ── CONSULTANT FEES ──
+    const feeEntries = [];
+    for (let i = 1; i <= 3; i++) {
+      const amt = i===1?get('Consultant Fee #1:'):get(`Consultant Fee #${i}:`);
+      const date = i===1?get('Date:'):get(`Date: ${i}`);
+      const desc = i===1?get('Description:'):get(`Description: ${i}`);
+      if (amt && parseMoney(amt) > 0) feeEntries.push({amt, date, desc});
+    }
+    const totalFees = get('Total Consultant Fees:') || get('Total Consultant Fees: 2');
+    const feeNotes = r.feeNotes || get('Consultant Fee Notes');
+    if (r.fees > 0 || feeEntries.length) {
+      html += `<div class="sec">Consultant Fees</div>
+        <table><thead><tr><th style="text-align:left">Description</th><th>Date</th><th>Amount</th></tr></thead><tbody>`;
+      if (feeEntries.length) {
+        feeEntries.forEach(f => { html += `<tr><td>${f.desc||'—'}</td><td style="text-align:right">${f.date||'—'}</td><td style="text-align:right">${fmtMoney(f.amt)}</td></tr>`; });
+      } else {
+        html += `<tr><td colspan="2">Consultant Fee</td><td style="text-align:right">${fmt2(r.fees)}</td></tr>`;
+      }
+      html += `</tbody><tfoot><tr class="total-row"><td colspan="2">Total Consultant Fees</td><td>${fmtMoney(totalFees)||fmt2(r.fees)}</td></tr></tfoot></table>`;
+      if (nz(feeNotes)) html += `<div class="row" style="margin-top:8px"><span class="lbl">Fee Notes:</span><span class="val">${feeNotes}</span></div>`;
+    }
+
+    // ── EXPENSES ──
+    const mileageMi = get('Mileage (# of miles):');
+    const mileageDol = get('Mileage Total (70 cents per mile):');
+    const mileageFrom = get('Mileage Starting Location:');
+    const mileageTo = get('Mileage Ending Location:');
+    const mileageRT = get('Mileage: Round Trip?');
+    const mileageNotes = get('Mileage Notes:');
+    const rentalCar = get('Rental Car:');
+    const rentalGas = get('Rental Car Gas:');
+    const rentalCo = get('Rental Company:');
+    const parking = get('Parking:');
+    const airTravel = get('Air Travel:');
+    const lodging = get('Lodging:');
+    const meals = get('Meals:');
+    const postage = get('Postage:');
+    const tolls = get('Tolls:');
+    const misc1 = get('Miscellaneous 1:'); const misc1d = get('Miscellaneous 1 Description:');
+    const misc2 = get('Miscellaneous 2:'); const misc2d = get('Miscellaneous 2 Description:');
+    const misc3 = get('Miscellaneous 3:'); const misc3d = get('Miscellaneous 3 Description:');
+    const totalExp = get('Total Expenses:') || get('Total Expenses: 3');
+    const expNotes = r.expenseNotes || get('Expense Notes:');
+
+    html += `<div class="sec">Expenses</div><table>
+      <thead><tr><th style="text-align:left">Category</th><th>Detail</th><th>Amount</th></tr></thead><tbody>`;
+
+    const expRow = (cat, detail, amt) => {
+      const v = parseMoney(amt);
+      if (!v && !detail) return '';
+      return `<tr><td>${cat}</td><td style="text-align:right;color:#64748b;font-size:11px">${detail||''}</td><td style="text-align:right">${v?fmt2(v):'—'}</td></tr>`;
+    };
+
+    if (mileageMi || mileageDol) {
+      const detail = [mileageMi?`${mileageMi} mi`:'', mileageFrom&&mileageTo?`${mileageFrom} → ${mileageTo}`:'', mileageRT==='Yes'?'Round Trip':''].filter(Boolean).join(' · ');
+      html += expRow('Mileage', detail, mileageDol || String(r.mileage));
+      if (nz(mileageNotes)) html += `<tr><td colspan="3" style="color:#64748b;font-size:11px;font-style:italic;padding-left:20px">${mileageNotes}</td></tr>`;
+    }
+    if (rentalCar||rentalGas) {
+      html += expRow('Rental Car', rentalCo, rentalCar);
+      if (rentalGas && parseMoney(rentalGas)) html += expRow('Rental Car Gas', '', rentalGas);
+    }
+    html += expRow('Parking', '', parking);
+    html += expRow('Air Travel', '', airTravel||String(r.airTravel||''));
+    html += expRow('Lodging', '', lodging);
+    html += expRow('Meals', '', meals||String(r.meals||''));
+    html += expRow('Postage', '', postage);
+    html += expRow('Tolls', '', tolls);
+    if (parseMoney(misc1)) html += expRow('Miscellaneous', misc1d, misc1);
+    if (parseMoney(misc2)) html += expRow('Miscellaneous', misc2d, misc2);
+    if (parseMoney(misc3)) html += expRow('Miscellaneous', misc3d, misc3);
+
+    const totExpVal = parseMoney(totalExp) || r.expenses;
+    const totFeeVal = parseMoney(totalFees) || r.fees;
+    const grandTotal = parseMoney(get('Total Amount Billed:')) || r.total;
+
+    html += `</tbody><tfoot>
+      <tr style="font-weight:600;background:#f8fafc"><td colspan="2">Total Expenses</td><td style="text-align:right">${fmt2(totExpVal)}</td></tr>
+      <tr class="total-row"><td colspan="2">Total Amount Billed</td><td>${fmt2(grandTotal)}</td></tr>
+    </tfoot></table>`;
+
+    if (nz(expNotes)) html += `<div class="row" style="margin-top:8px"><span class="lbl">Expense Notes:</span><span class="val">${expNotes}</span></div>`;
+
+    // ── SHAREPOINT LINK ──
+    const spLink = get('SharePoint Link');
+    if (spLink) {
+      html += `<div class="sec">Documents</div>
+        <div class="row"><span class="lbl">SharePoint:</span><span class="val"><a href="${spLink}" target="_blank">View Uploaded Files ↗</a></span></div>`;
+    }
+
+    html += `</div>`; // end .report
   });
 
   html += `</body></html>`;
@@ -1098,6 +1394,7 @@ function sortOverviewTable(col) {
 
 // ─── INIT ─────────────────────────────────────────────────────
 setYear(2026); // default to current year
+loadLiveData(); // fetch live data from Google Sheets on every page load
 </script>
 </body>
 </html>
