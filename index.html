@@ -474,14 +474,14 @@ function showOverview() {
             const deltaColor = delta===null?'var(--muted)':delta>=0?'var(--green)':'var(--red)';
             const deltaText = delta===null?'—':delta>=0?`&#10003; ${fmtN(delta)} under`:`&#10007; ${fmtN(Math.abs(delta))} over`;
             const confLeads = parseInt(leads[c.key+'__'+activeYear]||0);
-            return `<tr onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="cursor:pointer">
-              <td data-sort="${c.key}"><strong>${c.key}</strong></td>
-              <td class="money" data-sort="${yearSpend}">${yearSpend>0?fmtN(yearSpend):'—'}</td>
-              <td class="money" data-sort="${yearSpons}" style="color:var(--muted)">${yearSpons>0?fmtN(yearSpons):'—'}</td>
-              <td class="money" data-sort="${yearNet}"><strong>${fmtN(yearNet)}</strong></td>
-              <td class="money" data-sort="${confBudget}" style="color:var(--muted)">${confBudget>0?fmtN(confBudget):'—'}</td>
-              <td class="money" data-sort="${delta===null?-9999999:delta}" style="font-weight:600;color:${deltaColor}">${deltaText}</td>
-              <td data-sort="${confLeads}" style="text-align:center;font-weight:600;color:${confLeads>0?'var(--text)':'var(--muted)'}">${confLeads||'—'}</td>
+            return `<tr style="cursor:pointer">
+              <td data-sort="${c.key}"><strong><a href="#" onclick="event.preventDefault();showConf('${c.key.replace(/'/g,"\\'")}');" style="color:var(--text);text-decoration:underline;text-underline-offset:3px;">${c.key}</a></strong></td>
+              <td class="money" data-sort="${yearSpend}" onclick="showConf('${c.key.replace(/'/g,"\\'")}');">${yearSpend>0?fmtN(yearSpend):'—'}</td>
+              <td class="money" data-sort="${yearSpons}" onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="color:var(--muted)">${yearSpons>0?fmtN(yearSpons):'—'}</td>
+              <td class="money" data-sort="${yearNet}" onclick="showConf('${c.key.replace(/'/g,"\\'")}');"><strong>${fmtN(yearNet)}</strong></td>
+              <td class="money" data-sort="${confBudget}" onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="color:var(--muted)">${confBudget>0?fmtN(confBudget):'—'}</td>
+              <td class="money" data-sort="${delta===null?-9999999:delta}" onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="font-weight:600;color:${deltaColor}">${deltaText}</td>
+              <td data-sort="${confLeads}" onclick="showConf('${c.key.replace(/'/g,"\\'")}');" style="text-align:center;font-weight:600;color:${confLeads>0?'var(--text)':'var(--muted)'}">${confLeads||'—'}</td>
             </tr>`;
           } else {
             const t25=totalByYear(c.rows,2025), t26=totalByYear(c.rows,2026);
@@ -602,6 +602,7 @@ function showConf(key) {
       </div>
       <div class="detail-actions">
         <button class="btn btn-ai" onclick="openPlanModal('${safeKey}')">&#10024; Plan for Next Year</button>
+        <button class="btn btn-outline" onclick="viewConfPDF('${safeKey}')">&#128196; View Raw Data (PDF)</button>
         <button class="btn btn-outline" onclick="showOverview()">&#8592; Overview</button>
       </div>
     </div>
@@ -1010,6 +1011,68 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// ─── RAW DATA PDF ─────────────────────────────────────────────
+function viewConfPDF(key) {
+  const rows = getData().filter(r => r.confKey === key).sort((a,b)=>b.year-a.year||a.attendee.localeCompare(b.attendee));
+  if (!rows.length) { showToast('No data found.'); return; }
+  const years = [...new Set(rows.map(r=>r.year))].sort().join(', ');
+  const fmt2 = n => '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${key} — Post-Event Submissions</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a1a;max-width:820px;margin:0 auto;padding:28px 24px;font-size:13px;}
+    h1{font-size:22px;font-weight:700;border-bottom:3px solid #f8182d;padding-bottom:10px;margin-bottom:4px;}
+    .meta{color:#64748b;font-size:12px;margin-bottom:24px;}
+    .report{border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin-bottom:20px;page-break-inside:avoid;}
+    .report-title{font-size:15px;font-weight:700;color:#0f172a;padding-bottom:10px;margin-bottom:12px;border-bottom:1px solid #e2e8f0;}
+    .section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;margin:14px 0 7px;}
+    .row{display:flex;gap:8px;margin-bottom:5px;}
+    .lbl{font-weight:600;color:#64748b;min-width:150px;flex-shrink:0;}
+    .val{color:#1a1a1a;}
+    .block{background:#f8fafc;border-radius:5px;padding:9px 12px;margin-top:4px;line-height:1.65;white-space:pre-wrap;}
+    table{width:100%;border-collapse:collapse;margin-top:4px;}
+    td,th{padding:5px 8px;border:1px solid #e2e8f0;font-size:12px;}
+    th{background:#f8fafc;font-weight:600;text-align:right;}th:first-child{text-align:left;}td:not(:first-child){text-align:right;}
+    @media print{body{padding:12px;}.report{page-break-inside:avoid;}}
+  </style></head><body>
+  <h1>${key}</h1>
+  <div class="meta">Post-Event Submissions &nbsp;·&nbsp; ${years} &nbsp;·&nbsp; ${rows.length} report${rows.length!==1?'s':''} &nbsp;·&nbsp; Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>`;
+
+  rows.forEach(r => {
+    html += `<div class="report">
+      <div class="report-title">${r.attendee} &nbsp;·&nbsp; ${r.year} &nbsp;·&nbsp; ${r.dates}${r.location?' &nbsp;·&nbsp; '+r.location:''}</div>
+      <div class="section">Overview</div>
+      <div class="row"><span class="lbl">Conference:</span><span class="val">${r.conference}</span></div>
+      <div class="row"><span class="lbl">Role:</span><span class="val">${r.type}</span></div>
+      <div class="row"><span class="lbl">FPM Managed:</span><span class="val">${r.managed||'—'}</span></div>
+      <div class="section">Cost Breakdown</div>
+      <table>
+        <thead><tr><th>Category</th><th>Amount</th></tr></thead>
+        <tbody>
+          <tr><td>Consultant Fees</td><td>${r.fees>0?fmt2(r.fees):'—'}</td></tr>
+          <tr><td>Air Travel</td><td>${r.airTravel>0?fmt2(r.airTravel):'—'}</td></tr>
+          <tr><td>Meals</td><td>${r.meals>0?fmt2(r.meals):'—'}</td></tr>
+          <tr><td>Mileage</td><td>${r.mileage>0?r.mileage+' mi':'—'}</td></tr>
+          <tr><td>Other Expenses</td><td>${Math.max(0,r.expenses-r.airTravel-r.meals-r.mileage)>0?fmt2(Math.max(0,r.expenses-r.airTravel-r.meals-r.mileage)):'—'}</td></tr>
+          <tr style="font-weight:700"><td>Total Billed</td><td>${fmt2(r.total)}</td></tr>
+        </tbody>
+      </table>
+      ${r.expenseNotes?`<div class="section">Expense Notes</div><div class="block">${r.expenseNotes}</div>`:''}
+      ${r.feeNotes?`<div class="section">Fee Notes</div><div class="block">${r.feeNotes}</div>`:''}
+      ${r.summary&&r.summary.trim()&&r.summary.toLowerCase()!=='n/a'?`<div class="section">Summary</div><div class="block">${r.summary}</div>`:''}
+      ${r.suggestions&&r.suggestions.trim()&&r.suggestions.toLowerCase()!=='n/a'&&r.suggestions.toLowerCase()!=='none'?`<div class="section">Suggestions</div><div class="block">${r.suggestions}</div>`:''}
+    </div>`;
+  });
+
+  html += `</body></html>`;
+  const w = window.open('','_blank');
+  if (!w) { showToast('Allow pop-ups to view PDF.'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(), 400);
 }
 
 // ─── SORTABLE TABLE ───────────────────────────────────────────
