@@ -584,21 +584,18 @@ function showOverview() {
             return {key:c.key, count:confTotal};
           }).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
           const maxCount = byConf2.length ? byConf2[0].count : 1;
-          return \`<div style="font-size:38px;font-weight:700;line-height:1;margin-bottom:4px">\${viewTotal||'—'}</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:14px">\${activeYear?activeYear+' leads':'total leads across all years'}</div>
-          <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
-          \${byConf2.length ? byConf2.map(x=>\`
-            <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;font-size:12px;">
-              <div>
-                <div style="font-weight:600;margin-bottom:2px">\${x.key}</div>
-                <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden">
-                  <div style="height:100%;width:\${Math.round(x.count/maxCount*100)}%;background:var(--accent);border-radius:3px"></div>
-                </div>
-              </div>
-              <div style="font-weight:700;font-size:14px">\${x.count}</div>
-            </div>
-          \`).join('') : '<div style="color:var(--muted);font-size:13px">No lead data yet</div>'}
-          </div>\`;
+          const rows2 = byConf2.map(x=>
+            '<div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;font-size:12px;margin-bottom:6px">' +
+            '<div><div style="font-weight:600;margin-bottom:2px">'+x.key+'</div>' +
+            '<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden">' +
+            '<div style="height:100%;width:'+Math.round(x.count/maxCount*100)+'%;background:var(--accent);border-radius:3px"></div>' +
+            '</div></div><div style="font-weight:700;font-size:14px">'+x.count+'</div></div>'
+          ).join('');
+          return '<div style="font-size:38px;font-weight:700;line-height:1;margin-bottom:4px">'+(viewTotal||'—')+'</div>' +
+            '<div style="font-size:12px;color:var(--muted);margin-bottom:14px">'+(activeYear?activeYear+' leads':'total leads across all years')+'</div>' +
+            '<div style="flex:1;overflow-y:auto">' +
+            (byConf2.length ? rows2 : '<div style="color:var(--muted);font-size:13px">No lead data yet</div>') +
+            '</div>';
         })()}
       </div>
       <div class="chart-card"><h3>Top Conferences by Spend</h3><p style="font-size:11px;color:var(--muted);margin:-6px 0 8px">Travel &amp; registration costs only — excludes sponsorship fees</p><div class="chart-wrap"><canvas id="chartConfs"></canvas></div></div>
