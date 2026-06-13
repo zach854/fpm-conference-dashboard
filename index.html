@@ -810,22 +810,28 @@ function showConf(key) {
       <div class="chart-wrap"><canvas id="chartHist"></canvas></div>
     </div>
 
-    ${hasContacts ? `<div class="detail-grid" style="margin-bottom:14px">
-      <div class="panel">
+    ${hasContacts ? `<div class="detail-grid" style="margin-bottom:14px;grid-template-columns:1fr 1fr;">
+      <div class="panel" style="overflow-x:auto">
         <h3>&#129309; Current Partners Seen</h3>
-        ${curContacts.length ? curContacts.map(c=>`
-          <div class="partner-card">
-            <div class="partner-name">${c.name}</div>
-            <div class="partner-org">${c.attendee} &middot; <span class="badge b${String(c.year).slice(-2)}">${c.year}</span></div>
-          </div>`).join('') : '<div style="color:var(--muted);font-size:13px">None recorded.</div>'}
+        ${curContacts.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr>
+            <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600">Name</th>
+            <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600">Affiliation</th>
+            <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600">Notes</th>
+          </tr></thead>
+          <tbody>${curContacts.map(c=>'<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+c.name+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted)"></td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted)">'+c.attendee+' &middot; '+c.year+'</td></tr>').join('')}</tbody>
+        </table>` : '<div style="color:var(--muted);font-size:13px">None recorded.</div>'}
       </div>
-      <div class="panel">
+      <div class="panel" style="overflow-x:auto">
         <h3>&#127919; Potential Partners</h3>
-        ${potContacts.length ? potContacts.map(c=>`
-          <div class="partner-card">
-            <div class="partner-name">${c.name}</div>
-            <div class="partner-org">${c.attendee} &middot; <span class="badge b${String(c.year).slice(-2)}">${c.year}</span></div>
-          </div>`).join('') : '<div style="color:var(--muted);font-size:13px">None recorded.</div>'}
+        ${potContacts.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr>
+            <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600">Name</th>
+            <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600">Affiliation</th>
+            <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600">Notes</th>
+          </tr></thead>
+          <tbody>${potContacts.map(c=>'<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+c.name+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted)"></td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted)">'+c.attendee+' &middot; '+c.year+'</td></tr>').join('')}</tbody>
+        </table>` : '<div style="color:var(--muted);font-size:13px">None recorded.</div>'}
       </div>
     </div>` : ''}
 
