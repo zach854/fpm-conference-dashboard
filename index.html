@@ -570,7 +570,37 @@ function showOverview() {
   mc.innerHTML = `
     <div class="stats-row">${statsHtml}</div>
     <div class="charts-row">
-      <div class="chart-card"><h3>Spend by Month</h3><div class="chart-wrap"><canvas id="chartYears"></canvas></div></div>
+      <div class="chart-card" style="display:flex;flex-direction:column;">
+        <h3>&#127919; Total Leads Received</h3>
+        ${(() => {
+          const viewLeads = activeYear
+            ? Object.entries(leads).filter(([k])=>k.endsWith('__'+activeYear))
+            : Object.entries(leads);
+          const viewTotal = viewLeads.reduce((s,[,v])=>s+(parseInt(v)||0),0);
+          const byConf2 = confs.map(c=>{
+            const confTotal = activeYear
+              ? parseInt(leads[c.key+'__'+activeYear]||0)
+              : Object.keys(leads).filter(k=>k.startsWith(c.key+'__')).reduce((s,k)=>s+(parseInt(leads[k])||0),0);
+            return {key:c.key, count:confTotal};
+          }).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
+          const maxCount = byConf2.length ? byConf2[0].count : 1;
+          return \`<div style="font-size:38px;font-weight:700;line-height:1;margin-bottom:4px">\${viewTotal||'—'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:14px">\${activeYear?activeYear+' leads':'total leads across all years'}</div>
+          <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+          \${byConf2.length ? byConf2.map(x=>\`
+            <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;font-size:12px;">
+              <div>
+                <div style="font-weight:600;margin-bottom:2px">\${x.key}</div>
+                <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden">
+                  <div style="height:100%;width:\${Math.round(x.count/maxCount*100)}%;background:var(--accent);border-radius:3px"></div>
+                </div>
+              </div>
+              <div style="font-weight:700;font-size:14px">\${x.count}</div>
+            </div>
+          \`).join('') : '<div style="color:var(--muted);font-size:13px">No lead data yet</div>'}
+          </div>\`;
+        })()}
+      </div>
       <div class="chart-card"><h3>Top Conferences by Spend</h3><p style="font-size:11px;color:var(--muted);margin:-6px 0 8px">Travel &amp; registration costs only — excludes sponsorship fees</p><div class="chart-wrap"><canvas id="chartConfs"></canvas></div></div>
     </div>
     <div class="panel">
@@ -622,43 +652,32 @@ function showOverview() {
             </tr>`;
           }
         }).join('')}</tbody>
+        <tfoot>${(() => {
+          const budgets = getBudgetsLS();
+          if (activeYear) {
+            const totSpend = confs.reduce((s,c)=>s+c.rows.filter(r=>r.year===activeYear).reduce((a,r)=>a+r.total,0),0);
+            const totSpons = confs.reduce((s,c)=>s+(parseFloat(sponsorships[c.key+'__'+activeYear]||0)),0);
+            const totNet = totSpend + totSpons;
+            const totBudget = confs.reduce((s,c)=>s+(parseFloat(budgets[c.key]||0)),0);
+            const totLeads = confs.reduce((s,c)=>s+(parseInt(leads[c.key+'__'+activeYear]||0)),0);
+            const totDelta = totBudget > 0 ? totBudget - totNet : null;
+            const deltaColor = totDelta===null?'var(--muted)':totDelta>=0?'var(--green)':'var(--red)';
+            const deltaText = totDelta===null?'—':totDelta>=0?`&#10003; ${fmtN(totDelta)} under`:`&#10007; ${fmtN(Math.abs(totDelta))} over`;
+            return `<tr class="total-row"><td>Total</td><td class="money">${fmtN(totSpend)}</td><td class="money">${totSpons>0?fmtN(totSpons):'—'}</td><td class="money">${fmtN(totNet)}</td><td class="money">${totBudget>0?fmtN(totBudget):'—'}</td><td class="money" style="color:${deltaColor}">${deltaText}</td><td style="text-align:center">${totLeads||'—'}</td></tr>`;
+          } else {
+            const tot25 = confs.reduce((s,c)=>s+totalByYear(c.rows,2025),0);
+            const tot26 = confs.reduce((s,c)=>s+totalByYear(c.rows,2026),0);
+            const totSpons = confs.reduce((s,c)=>s+getSponsorshipForConf(c.key),0);
+            const totAll = confs.reduce((s,c)=>s+c.rows.reduce((a,r)=>a+r.total,0),0);
+            const totNet = totAll + totSpons;
+            const totLeads = confs.reduce((s,c)=>s+Object.keys(leads).filter(k=>k.startsWith(c.key+'__')).reduce((a,k)=>a+(parseInt(leads[k])||0),0),0);
+            return `<tr class="total-row"><td>Total</td><td class="money">${fmtN(tot25)}</td><td class="money">${fmtN(tot26)}</td><td class="money">${totSpons>0?fmtN(totSpons):'—'}</td><td class="money">${fmtN(totNet)}</td><td style="text-align:center">${totLeads||'—'}</td><td></td></tr>`;
+          }
+        })()}</tfoot>
       </table>
     </div>`;
 
-  // Monthly spend chart
-  const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  function parseMonthIdx(d) {
-    const map = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-    const m = (d||'').toLowerCase().match(/^([a-z]{3})/);
-    return m ? (map[m[1]] ?? -1) : -1;
-  }
-  const monthly25 = Array(12).fill(0);
-  const monthly26 = Array(12).fill(0);
-  getData().forEach(r => {
-    const mi = parseMonthIdx(r.dates);
-    if (mi < 0) return;
-    if (r.year === 2025) monthly25[mi] += r.total;
-    else if (r.year === 2026) monthly26[mi] += r.total;
-  });
-  const monthlyDatasets = !activeYear
-    ? [
-        {label:'2025', data:monthly25, backgroundColor:'rgba(248,24,45,0.75)', borderColor:'#f8182d', borderWidth:1},
-        {label:'2026', data:monthly26, backgroundColor:'rgba(99,102,241,0.75)', borderColor:'#6366f1', borderWidth:1}
-      ]
-    : [{
-        label: String(activeYear),
-        data: activeYear === 2025 ? monthly25 : monthly26,
-        backgroundColor:'rgba(248,24,45,0.75)', borderColor:'#f8182d', borderWidth:1
-      }];
-  charts.years = new Chart(document.getElementById('chartYears'), {
-    type: 'bar',
-    data: { labels: MONTH_LABELS, datasets: monthlyDatasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: !activeYear, labels: { boxWidth: 12 } } },
-      scales: { y: { ticks: { callback: v => '$'+v.toLocaleString() } } }
-    }
-  });
+  // (Spend by Month chart removed — replaced by Total Leads card)
 
   const top = byConf.slice(0,8);
   charts.confs = new Chart(document.getElementById('chartConfs'), {
@@ -708,6 +727,23 @@ function showConf(key) {
       : `<span class="bstatus over">&#10007; ${fmtN(Math.abs(diff))} over budget (${pct}%)</span>`;
   }
 
+  // Filtered rows for year-specific views
+  const viewRows = activeYear ? rows.filter(r=>r.year===activeYear) : rows;
+  const vFees = viewRows.reduce((s,r)=>s+r.fees,0);
+  const vAir = viewRows.reduce((s,r)=>s+r.airTravel,0);
+  const vMeals = viewRows.reduce((s,r)=>s+r.meals,0);
+  const vMileage = viewRows.reduce((s,r)=>s+r.mileage,0);
+  const vExpenses = viewRows.reduce((s,r)=>s+r.expenses,0);
+  const vOther = vExpenses - vAir - vMeals - vMileage;
+  const potContacts = [], curContacts = [];
+  viewRows.forEach(r => {
+    const fd = r._fullData;
+    if (!fd) return;
+    (fd._potentialPartners||[]).forEach(n => { if (n && !potContacts.some(c=>c.name===n)) potContacts.push({name:n,attendee:r.attendee,year:r.year}); });
+    (fd._currentPartners||[]).forEach(n => { if (n && !curContacts.some(c=>c.name===n)) curContacts.push({name:n,attendee:r.attendee,year:r.year}); });
+  });
+  const hasContacts = potContacts.length > 0 || curContacts.length > 0;
+
   const mc = document.getElementById('mainContent');
   const safeKey = key.replace(/'/g,"\\\'");
   const confLeads = getLeads();
@@ -743,12 +779,12 @@ function showConf(key) {
     </div>` : ''}
 
     <div class="detail-grid">
-      <div class="panel">
+      ${!activeYear && byYear.length > 1 ? `<div class="panel">
         <h3>Year-over-Year Spending</h3>
         <div class="chart-wrap"><canvas id="chartYoY"></canvas></div>
-      </div>
-      <div class="panel">
-        <h3>Expense Breakdown (All Years)</h3>
+      </div>` : ''}
+      <div class="panel" style="${!activeYear && byYear.length > 1 ? '' : 'grid-column:1/-1;'}">
+        <h3>Expense Breakdown${activeYear ? ' ('+activeYear+')' : ' (All Years)'}</h3>
         <div class="chart-wrap"><canvas id="chartBreakdown"></canvas></div>
       </div>
     </div>
@@ -757,7 +793,7 @@ function showConf(key) {
       <h3>Attendee Reports</h3>
       <table>
         <thead><tr><th>Year</th><th>Attendee</th><th>Role</th><th>Location</th><th>Dates</th><th class="money">Fees</th><th class="money">Expenses</th><th class="money">Total</th></tr></thead>
-        <tbody>${rows.sort((a,b)=>b.year-a.year||a.attendee.localeCompare(b.attendee)).map(r=>`
+        <tbody>${viewRows.sort((a,b)=>b.year-a.year||a.attendee.localeCompare(b.attendee)).map(r=>`
           <tr>
             <td><span class="badge b${String(r.year).slice(-2)}">${r.year}</span></td>
             <td>${r.attendee}</td>
@@ -777,10 +813,29 @@ function showConf(key) {
       <div class="chart-wrap"><canvas id="chartHist"></canvas></div>
     </div>
 
+    ${hasContacts ? `<div class="detail-grid" style="margin-bottom:14px">
+      <div class="panel">
+        <h3>&#129309; Current Partners Seen</h3>
+        ${curContacts.length ? curContacts.map(c=>`
+          <div class="partner-card">
+            <div class="partner-name">${c.name}</div>
+            <div class="partner-org">${c.attendee} &middot; <span class="badge b${String(c.year).slice(-2)}">${c.year}</span></div>
+          </div>`).join('') : '<div style="color:var(--muted);font-size:13px">None recorded.</div>'}
+      </div>
+      <div class="panel">
+        <h3>&#127919; Potential Partners</h3>
+        ${potContacts.length ? potContacts.map(c=>`
+          <div class="partner-card">
+            <div class="partner-name">${c.name}</div>
+            <div class="partner-org">${c.attendee} &middot; <span class="badge b${String(c.year).slice(-2)}">${c.year}</span></div>
+          </div>`).join('') : '<div style="color:var(--muted);font-size:13px">None recorded.</div>'}
+      </div>
+    </div>` : ''}
+
     <div class="notes-grid">
       <div class="note-card">
         <h3>&#128221; Summary Notes</h3>
-        ${rows.filter(r=>r.summary&&r.summary.trim()&&r.summary.toLowerCase()!=='n/a').map(r=>`
+        ${viewRows.filter(r=>r.summary&&r.summary.trim()&&r.summary.toLowerCase()!=='n/a').map(r=>`
           <div class="note-item">
             <div class="note-author">${r.attendee} <span class="badge b${String(r.year).slice(-2)}">${r.year}</span></div>
             ${r.summary}
@@ -788,7 +843,7 @@ function showConf(key) {
       </div>
       <div class="note-card">
         <h3>&#128161; Suggestions</h3>
-        ${rows.filter(r=>r.suggestions&&r.suggestions.trim()&&r.suggestions.toLowerCase()!=='n/a'&&r.suggestions.toLowerCase()!=='none').map(r=>`
+        ${viewRows.filter(r=>r.suggestions&&r.suggestions.trim()&&r.suggestions.toLowerCase()!=='n/a'&&r.suggestions.toLowerCase()!=='none').map(r=>`
           <div class="note-item">
             <div class="note-author">${r.attendee} <span class="badge b${String(r.year).slice(-2)}">${r.year}</span></div>
             ${r.suggestions}
@@ -796,7 +851,7 @@ function showConf(key) {
       </div>
     </div>`;
 
-  charts.yoy = new Chart(document.getElementById('chartYoY'), {
+  if (document.getElementById('chartYoY')) charts.yoy = new Chart(document.getElementById('chartYoY'), {
     type: 'bar',
     data: {
       labels: byYear.map(b=>String(b.year)),
@@ -805,19 +860,19 @@ function showConf(key) {
     options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+v.toLocaleString()}}}}
   });
 
-  const hasData = totFees+totAir+totMeals+totMileage+Math.max(totOther,0) > 0;
+  const hasData = vFees+vAir+vMeals+vMileage+Math.max(vOther,0) > 0;
   if (hasData) {
     charts.breakdown = new Chart(document.getElementById('chartBreakdown'), {
       type: 'doughnut',
       data: {
         labels: ['Consultant Fees','Air Travel','Meals','Mileage','Other Expenses'],
-        datasets: [{data:[totFees,totAir,totMeals,totMileage,Math.max(totOther,0)], backgroundColor:['#0f172a','#1e3a5f','#2d6a9f','#5b9dd9','#93c5fd'], borderWidth:2, borderColor:'#fff'}]
+        datasets: [{data:[vFees,vAir,vMeals,vMileage,Math.max(vOther,0)], backgroundColor:['#0f172a','#1e3a5f','#2d6a9f','#5b9dd9','#93c5fd'], borderWidth:2, borderColor:'#fff'}]
       },
       options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}}}
     });
   }
 
-  const filtRows = rows.filter(r=>r.total>0).sort((a,b)=>a.total-b.total);
+  const filtRows = viewRows.filter(r=>r.total>0).sort((a,b)=>a.total-b.total);
   if (filtRows.length > 0) {
     charts.hist = new Chart(document.getElementById('chartHist'), {
       type: 'bar',
