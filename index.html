@@ -114,6 +114,8 @@ tr:hover td{background:var(--bg);}
 .yr-amt{font-size:11px;color:var(--muted);width:70px;text-align:right;}
 .full-table{grid-column:1/-1;}
 /* ADMIN PANEL */
+.login-overlay{position:fixed;inset:0;background:#111318;z-index:2000;display:flex;align-items:center;justify-content:center;}
+.login-box{background:var(--card);border-radius:16px;padding:40px;width:360px;max-width:90vw;box-shadow:0 24px 64px rgba(0,0,0,.6);text-align:center;}
 .admin-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:flex-start;justify-content:center;padding-top:40px;}
 .admin-overlay.open{display:flex;}
 .admin-panel{background:#fff;border-radius:12px;width:960px;max-width:96vw;max-height:calc(100vh - 80px);display:flex;flex-direction:column;border-top:4px solid var(--brown);}
@@ -186,6 +188,20 @@ tr:hover td{background:var(--bg);}
 </div>
 </div>
 
+<!-- Login -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div style="font-size:34px;font-weight:900;color:var(--accent);letter-spacing:-1px;margin-bottom:2px;">FPM</div>
+    <div style="font-size:17px;font-weight:700;margin-bottom:4px;">Conference Dashboard</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:24px;">Enter your password to continue</div>
+    <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password"
+      style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;background:var(--bg);color:var(--text);box-sizing:border-box;margin-bottom:10px;"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()" style="width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.3px;">Sign In</button>
+    <div id="loginErr" style="color:#e05555;font-size:13px;margin-top:10px;min-height:18px;"></div>
+  </div>
+</div>
+
 <!-- Admin Panel -->
 <div class="admin-overlay" id="adminOverlay" onclick="adminOverlayClick(event)">
 <div class="admin-panel" id="adminPanel">
@@ -199,6 +215,8 @@ tr:hover td{background:var(--bg);}
     <div class="admin-tab" id="atab2" onclick="switchAdminTab(2)">&#128202; Budgets</div>
     <div class="admin-tab" id="atab3" onclick="switchAdminTab(3)">&#128196; Data Review</div>
     <div class="admin-tab" id="atab4" onclick="switchAdminTab(4)">&#127919; Leads</div>
+    <div class="admin-tab" id="atab5" onclick="switchAdminTab(5)">&#127912; Marketing</div>
+    <div class="admin-tab" id="atab6" onclick="switchAdminTab(6)">&#9881; Settings</div>
   </div>
   <div class="admin-body" id="adminBody"></div>
 </div>
@@ -245,8 +263,58 @@ let RAW = [
 ];
 
 // ─── LOCALSTORAGE HELPERS ─────────────────────────────────────
-function lsGet(key, def={}) { try { return JSON.parse(localStorage.getItem(key) || 'null') || def; } catch { return def; } }
-function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+// ─── ADMIN DATA + GOOGLE SHEETS SYNC ─────────────────────────
+const DEFAULT_PASS_HASH = 'e88a28a3c4229e0d46820e2645b23404a550f3e20720c81e33448913a5ad06b7'; // "fpm2025"
+let adminData = {}; // loaded from Apps Script on login; keys: passwordHash, sponsorships, budgets, leads, nameOverrides, marketing
+
+function getApiUrl() { return localStorage.getItem('fpm_api_url') || ''; }
+function setApiUrl(url) { localStorage.setItem('fpm_api_url', url.trim()); }
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function fetchAdminData() {
+  const url = getApiUrl();
+  if (!url) return {};
+  try {
+    const resp = await fetch(url + '?t=' + Date.now());
+    if (!resp.ok) return {};
+    return await resp.json();
+  } catch(e) { console.warn('Admin fetch failed:', e); return {}; }
+}
+
+let _syncTimer = null;
+function syncAdminData() {
+  // Debounce to avoid rapid-fire POSTs
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(async () => {
+    const url = getApiUrl();
+    if (!url) return;
+    try {
+      await fetch(url, { method: 'POST', body: JSON.stringify(adminData) });
+    } catch(e) { console.warn('Admin sync failed:', e); }
+  }, 600);
+}
+
+// localStorage helpers — read from adminData first, fall back to localStorage
+const _adKeyMap = {
+  'fpm_name_overrides': 'nameOverrides',
+  'fpm_sponsorships':   'sponsorships',
+  'fpm_budgets':        'budgets',
+  'fpm_leads':          'leads'
+};
+function lsGet(key, def={}) {
+  const adKey = _adKeyMap[key];
+  if (adKey && adminData[adKey] !== undefined) return adminData[adKey];
+  try { return JSON.parse(localStorage.getItem(key) || 'null') || def; } catch { return def; }
+}
+function lsSet(key, val) {
+  const adKey = _adKeyMap[key];
+  if (adKey) { adminData[adKey] = val; syncAdminData(); }
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
 
 function getNameOverrides() { return lsGet('fpm_name_overrides', {}); }
 function saveNameOverrides(v) { lsSet('fpm_name_overrides', v); }
@@ -254,6 +322,47 @@ function getSponsorships() { return lsGet('fpm_sponsorships', {}); }
 function saveSponsorships(v) { lsSet('fpm_sponsorships', v); }
 function getBudgetsLS() { return lsGet('fpm_budgets', {}); }
 function saveBudgetsLS(v) { lsSet('fpm_budgets', v); }
+
+function getMarketing() { return adminData.marketing || []; }
+function saveMarketing(v) { adminData.marketing = v; syncAdminData(); }
+
+// ─── LOGIN ────────────────────────────────────────────────────
+async function initApp() {
+  if (sessionStorage.getItem('fpm_auth') === '1') {
+    document.getElementById('loginOverlay').style.display = 'none';
+    adminData = await fetchAdminData();
+    startDashboard();
+    return;
+  }
+  // Focus password field
+  setTimeout(() => { const f = document.getElementById('loginPass'); if(f) f.focus(); }, 50);
+}
+
+async function doLogin() {
+  const passEl = document.getElementById('loginPass');
+  const errEl  = document.getElementById('loginErr');
+  const pass = passEl.value;
+  if (!pass) return;
+  errEl.textContent = 'Checking…';
+  const hash = await sha256(pass);
+  const tempData = await fetchAdminData();
+  const storedHash = tempData.passwordHash || DEFAULT_PASS_HASH;
+  if (hash === storedHash) {
+    adminData = tempData;
+    sessionStorage.setItem('fpm_auth', '1');
+    document.getElementById('loginOverlay').style.display = 'none';
+    startDashboard();
+  } else {
+    errEl.textContent = 'Incorrect password. Please try again.';
+    passEl.value = '';
+    passEl.focus();
+  }
+}
+
+function startDashboard() {
+  setYear(2026);
+  loadLiveData();
+}
 function getLeads() {
   const base = LIVE_LEADS || BAKED_LEADS;
   const stored = lsGet('fpm_leads', {});
@@ -968,7 +1077,9 @@ function switchAdminTab(idx) {
   else if (idx===1) renderAdminSponsTab(body);
   else if (idx===2) renderAdminBudgetsTab(body);
   else if (idx===3) renderAdminDataTab(body);
-  else renderAdminLeadsTab(body);
+  else if (idx===4) renderAdminLeadsTab(body);
+  else if (idx===5) renderAdminMarketingTab(body);
+  else renderAdminSettingsTab(body);
 }
 
 function renderAdminNamesTab(body) {
@@ -1106,6 +1217,159 @@ function saveLeadCount(key, year, val) {
   saveLeads(l);
   showToast('Leads saved!');
   buildSidebar();
+}
+
+// ─── MARKETING MATERIALS TAB ──────────────────────────────────
+function renderAdminMarketingTab(body) {
+  const items = getMarketing();
+  const DATA = getData();
+  const confOptions = ['General', ...Object.keys(DATA.reduce((m,r)=>{ m[r.confKey]=1; return m; },{})).sort()];
+  const years = [2025, 2026];
+  body.innerHTML = `
+    <div class="admin-section">
+      <h3>Marketing Materials</h3>
+      <p>Track marketing materials purchased each year. Assign to a specific conference or mark as General (applies to all).</p>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;">DESCRIPTION</div>
+          <input id="mktDesc" type="text" placeholder="e.g. Brochures, Banner, Table Cloth…" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:240px;">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;">AMOUNT ($)</div>
+          <input id="mktAmt" type="number" min="0" step="0.01" placeholder="0.00" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:110px;text-align:right;">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;">YEAR</div>
+          <select id="mktYear" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);">
+            ${years.map(y=>`<option value="${y}"${y===2026?' selected':''}>${y}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;">CONFERENCE</div>
+          <select id="mktConf" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);max-width:200px;">
+            ${confOptions.map(c=>`<option>${c}</option>`).join('')}
+          </select>
+        </div>
+        <button onclick="addMarketingItem()" style="padding:7px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">+ Add</button>
+      </div>
+      ${items.length === 0 ? '<p style="color:var(--muted);font-size:13px;">No marketing items added yet.</p>' : `
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr>
+          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;">Description</th>
+          <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;">Amount</th>
+          <th style="text-align:center;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;">Year</th>
+          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;">Conference</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--border);"></th>
+        </tr></thead>
+        <tbody>
+          ${items.map((item,i) => `<tr>
+            <td style="padding:6px 8px;border-bottom:1px solid var(--border);">${item.desc}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-weight:600;">$${parseFloat(item.amount).toFixed(2)}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;"><span class="badge b${String(item.year).slice(-2)}">${item.year}</span></td>
+            <td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);">${item.conference}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;"><button onclick="deleteMarketingItem(${i})" style="background:none;border:none;cursor:pointer;color:#e05;font-size:15px;" title="Delete">&#128465;</button></td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td style="padding:8px;font-weight:700;border-top:2px solid var(--border);">Total</td>
+          <td style="padding:8px;font-weight:700;text-align:right;border-top:2px solid var(--border);">$${items.reduce((s,i)=>s+(parseFloat(i.amount)||0),0).toFixed(2)}</td>
+          <td colspan="3" style="border-top:2px solid var(--border);"></td>
+        </tr></tfoot>
+      </table>`}
+    </div>`;
+}
+
+function addMarketingItem() {
+  const desc = document.getElementById('mktDesc').value.trim();
+  const amt  = parseFloat(document.getElementById('mktAmt').value) || 0;
+  const yr   = parseInt(document.getElementById('mktYear').value);
+  const conf = document.getElementById('mktConf').value;
+  if (!desc || !amt) { showToast('Enter a description and amount.'); return; }
+  const items = getMarketing();
+  items.push({ id: Date.now().toString(), desc, amount: amt, year: yr, conference: conf });
+  saveMarketing(items);
+  showToast('Item added!');
+  renderAdminMarketingTab(document.getElementById('adminBody'));
+}
+
+function deleteMarketingItem(idx) {
+  if (!confirm('Delete this marketing item?')) return;
+  const items = getMarketing();
+  items.splice(idx, 1);
+  saveMarketing(items);
+  renderAdminMarketingTab(document.getElementById('adminBody'));
+}
+
+// ─── SETTINGS TAB ─────────────────────────────────────────────
+function renderAdminSettingsTab(body) {
+  const url = getApiUrl();
+  body.innerHTML = `
+    <div class="admin-section">
+      <h3>Google Sheets Backend</h3>
+      <p>Paste your Google Apps Script web app URL here so admin changes (budgets, sponsorships, leads, marketing) sync across all devices. <strong>Leave blank to use browser-only storage.</strong></p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <input id="apiUrlInput" type="url" value="${url}" placeholder="https://script.google.com/macros/s/…/exec"
+          style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);">
+        <button onclick="saveApiUrl()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">Save URL</button>
+      </div>
+      <div id="apiStatus" style="font-size:12px;color:var(--muted);min-height:18px;">${url ? '✓ URL configured — data syncing to Google Sheets.' : 'No URL set — data stored in this browser only.'}</div>
+    </div>
+    <div class="admin-section" style="margin-top:24px;">
+      <h3>Change Password</h3>
+      <p>This password protects the dashboard for everyone. It syncs to Google Sheets so all devices use the same password.</p>
+      <div style="display:grid;gap:8px;max-width:320px;">
+        <input id="newPass1" type="password" placeholder="New password" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);">
+        <input id="newPass2" type="password" placeholder="Confirm new password" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);">
+        <button onclick="changePassword()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">Update Password</button>
+      </div>
+      <div id="passMsg" style="font-size:12px;margin-top:8px;min-height:18px;"></div>
+    </div>
+    <div class="admin-section" style="margin-top:24px;">
+      <h3>Setup Instructions</h3>
+      <p>To enable cross-device sync, set up a Google Apps Script web app:</p>
+      <ol style="font-size:13px;line-height:1.8;color:var(--text);padding-left:20px;">
+        <li>Open your Google Sheet → <strong>Extensions → Apps Script</strong></li>
+        <li>Paste the Apps Script code (ask your admin for the file)</li>
+        <li>Click <strong>Deploy → New Deployment → Web App</strong></li>
+        <li>Set "Execute as" = <strong>Me</strong>, "Who has access" = <strong>Anyone</strong></li>
+        <li>Copy the web app URL and paste it above</li>
+      </ol>
+    </div>`;
+}
+
+async function saveApiUrl() {
+  const url = document.getElementById('apiUrlInput').value.trim();
+  setApiUrl(url);
+  const statusEl = document.getElementById('apiStatus');
+  if (!url) { statusEl.textContent = 'URL cleared — using browser storage only.'; return; }
+  statusEl.textContent = 'Testing connection…';
+  try {
+    const resp = await fetch(url + '?t=' + Date.now());
+    if (resp.ok) {
+      adminData = await resp.json();
+      statusEl.textContent = '✓ Connected! Data loaded from Google Sheets.';
+      showToast('Connected to Google Sheets!');
+    } else {
+      statusEl.textContent = '✗ URL returned an error. Check your Apps Script deployment.';
+    }
+  } catch(e) {
+    statusEl.textContent = '✗ Could not connect. Check the URL and deployment settings.';
+  }
+}
+
+async function changePassword() {
+  const p1 = document.getElementById('newPass1').value;
+  const p2 = document.getElementById('newPass2').value;
+  const msg = document.getElementById('passMsg');
+  if (!p1) { msg.style.color='#e05'; msg.textContent='Enter a new password.'; return; }
+  if (p1 !== p2) { msg.style.color='#e05'; msg.textContent='Passwords do not match.'; return; }
+  if (p1.length < 6) { msg.style.color='#e05'; msg.textContent='Password must be at least 6 characters.'; return; }
+  const hash = await sha256(p1);
+  adminData.passwordHash = hash;
+  syncAdminData();
+  msg.style.color='green'; msg.textContent='✓ Password updated!';
+  document.getElementById('newPass1').value = '';
+  document.getElementById('newPass2').value = '';
 }
 
 function renderAdminBudgetsTab(body) {
@@ -1451,8 +1715,7 @@ function sortOverviewTable(col) {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────
-setYear(2026); // default to current year
-loadLiveData(); // fetch live data from Google Sheets on every page load
+initApp(); // show login, then load admin data + start dashboard
 </script>
 </body>
 </html>
