@@ -193,7 +193,10 @@ tr:hover td{background:var(--bg);}
   <div class="login-box">
     <div style="font-size:34px;font-weight:900;color:var(--accent);letter-spacing:-1px;margin-bottom:2px;">FPM</div>
     <div style="font-size:17px;font-weight:700;margin-bottom:4px;">Conference Dashboard</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:24px;">Enter your password to continue</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:24px;">Sign in to access the dashboard</div>
+    <input id="loginUser" type="text" placeholder="Username" autocomplete="username"
+      style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;background:var(--bg);color:var(--text);box-sizing:border-box;margin-bottom:10px;"
+      onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
     <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password"
       style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;background:var(--bg);color:var(--text);box-sizing:border-box;margin-bottom:10px;"
       onkeydown="if(event.key==='Enter')doLogin()">
@@ -264,8 +267,9 @@ let RAW = [
 
 // ─── LOCALSTORAGE HELPERS ─────────────────────────────────────
 // ─── ADMIN DATA + GOOGLE SHEETS SYNC ─────────────────────────
-const DEFAULT_PASS_HASH = 'e88a28a3c4229e0d46820e2645b23404a550f3e20720c81e33448913a5ad06b7'; // "fpm2025"
-let adminData = {}; // loaded from Apps Script on login; keys: passwordHash, sponsorships, budgets, leads, nameOverrides, marketing
+// Default credentials: username "zach", password "fpm2025"
+const DEFAULT_CREDENTIALS = [{ username: 'zach', passwordHash: 'e88a28a3c4229e0d46820e2645b23404a550f3e20720c81e33448913a5ad06b7' }];
+let adminData = {}; // loaded from Apps Script on login; keys: credentials[], sponsorships, budgets, leads, nameOverrides, marketing
 
 function getApiUrl() { return localStorage.getItem('fpm_api_url') || ''; }
 function setApiUrl(url) { localStorage.setItem('fpm_api_url', url.trim()); }
@@ -345,26 +349,29 @@ async function initApp() {
     startDashboard();
     return;
   }
-  // Focus password field
-  setTimeout(() => { const f = document.getElementById('loginPass'); if(f) f.focus(); }, 50);
+  setTimeout(() => { const f = document.getElementById('loginUser'); if(f) f.focus(); }, 50);
 }
 
 async function doLogin() {
+  const userEl = document.getElementById('loginUser');
   const passEl = document.getElementById('loginPass');
   const errEl  = document.getElementById('loginErr');
+  const username = userEl.value.trim().toLowerCase();
   const pass = passEl.value;
-  if (!pass) return;
+  if (!username || !pass) { errEl.textContent = 'Enter your username and password.'; return; }
   errEl.textContent = 'Checking…';
   const hash = await sha256(pass);
   const tempData = await fetchAdminData();
-  const storedHash = tempData.passwordHash || DEFAULT_PASS_HASH;
-  if (hash === storedHash) {
+  const credentials = tempData.credentials || DEFAULT_CREDENTIALS;
+  const match = credentials.find(c => c.username.toLowerCase() === username && c.passwordHash === hash);
+  if (match) {
     adminData = tempData;
     sessionStorage.setItem('fpm_auth', '1');
+    sessionStorage.setItem('fpm_user', match.username);
     document.getElementById('loginOverlay').style.display = 'none';
     startDashboard();
   } else {
-    errEl.textContent = 'Incorrect password. Please try again.';
+    errEl.textContent = 'Incorrect username or password.';
     passEl.value = '';
     passEl.focus();
   }
@@ -1326,12 +1333,14 @@ function renderAdminSettingsTab(body) {
       <div id="apiStatus" style="font-size:12px;color:var(--muted);min-height:18px;">${url ? '✓ URL configured — data syncing to Google Sheets.' : 'No URL set — data stored in this browser only.'}</div>
     </div>
     <div class="admin-section" style="margin-top:24px;">
-      <h3>Change Password</h3>
-      <p>This password protects the dashboard for everyone. It syncs to Google Sheets so all devices use the same password.</p>
+      <h3>Change Login Credentials</h3>
+      <p>Update your username and/or password. Changes sync to Google Sheets immediately.</p>
       <div style="display:grid;gap:8px;max-width:320px;">
-        <input id="newPass1" type="password" placeholder="New password" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);">CURRENT USERNAME: <strong style="color:var(--text)">${sessionStorage.getItem('fpm_user')||'zach'}</strong></div>
+        <input id="newUser" type="text" placeholder="New username (leave blank to keep)" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);">
+        <input id="newPass1" type="password" placeholder="New password (leave blank to keep)" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);">
         <input id="newPass2" type="password" placeholder="Confirm new password" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);">
-        <button onclick="changePassword()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">Update Password</button>
+        <button onclick="changeCredentials()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">Update Credentials</button>
       </div>
       <div id="passMsg" style="font-size:12px;margin-top:8px;min-height:18px;"></div>
     </div>
@@ -1364,19 +1373,28 @@ async function saveApiUrl() {
   }
 }
 
-async function changePassword() {
+async function changeCredentials() {
+  const newUser = document.getElementById('newUser').value.trim();
   const p1 = document.getElementById('newPass1').value;
   const p2 = document.getElementById('newPass2').value;
   const msg = document.getElementById('passMsg');
-  if (!p1) { msg.style.color='#e05'; msg.textContent='Enter a new password.'; return; }
-  if (p1 !== p2) { msg.style.color='#e05'; msg.textContent='Passwords do not match.'; return; }
-  if (p1.length < 6) { msg.style.color='#e05'; msg.textContent='Password must be at least 6 characters.'; return; }
-  const hash = await sha256(p1);
-  adminData.passwordHash = hash;
+  if (!newUser && !p1) { msg.style.color='#e05'; msg.textContent='Enter a new username and/or password.'; return; }
+  if (p1 && p1 !== p2) { msg.style.color='#e05'; msg.textContent='Passwords do not match.'; return; }
+  if (p1 && p1.length < 6) { msg.style.color='#e05'; msg.textContent='Password must be at least 6 characters.'; return; }
+  const currentUser = sessionStorage.getItem('fpm_user') || 'zach';
+  const credentials = adminData.credentials || DEFAULT_CREDENTIALS.map(c=>({...c}));
+  const idx = credentials.findIndex(c => c.username.toLowerCase() === currentUser.toLowerCase());
+  const entry = idx >= 0 ? credentials[idx] : { username: currentUser, passwordHash: DEFAULT_CREDENTIALS[0].passwordHash };
+  if (newUser) { entry.username = newUser; sessionStorage.setItem('fpm_user', newUser); }
+  if (p1) { entry.passwordHash = await sha256(p1); }
+  if (idx >= 0) credentials[idx] = entry; else credentials.push(entry);
+  adminData.credentials = credentials;
   syncAdminData();
-  msg.style.color='green'; msg.textContent='✓ Password updated!';
+  msg.style.color='green'; msg.textContent='✓ Credentials updated! Use new login next time.';
+  document.getElementById('newUser').value = '';
   document.getElementById('newPass1').value = '';
   document.getElementById('newPass2').value = '';
+  setTimeout(() => renderAdminSettingsTab(document.getElementById('adminBody')), 100);
 }
 
 function renderAdminBudgetsTab(body) {
