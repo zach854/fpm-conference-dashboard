@@ -354,6 +354,17 @@ async function doLogin() {
   const match = credentials.find(c => c.username.toLowerCase() === username && c.passwordHash === hash);
   if (match) {
     adminData = tempData;
+    // Bootstrap: push any existing localStorage data up to JSONbin if it's missing there
+    let needsSync = false;
+    Object.entries(_adKeyMap).forEach(([lsKey, adKey]) => {
+      if (adminData[adKey] === undefined) {
+        try {
+          const local = JSON.parse(localStorage.getItem(lsKey) || 'null');
+          if (local && Object.keys(local).length > 0) { adminData[adKey] = local; needsSync = true; }
+        } catch {}
+      }
+    });
+    if (needsSync) syncAdminData();
     sessionStorage.setItem('fpm_auth', '1');
     sessionStorage.setItem('fpm_user', match.username);
     document.getElementById('loginOverlay').style.display = 'none';
