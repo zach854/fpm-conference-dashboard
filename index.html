@@ -275,14 +275,24 @@ async function sha256(str) {
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+// JSONP fetch — bypasses CORS for reading from Apps Script
+function jsonpFetch(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = '_apsCb_' + Date.now();
+    const script = document.createElement('script');
+    const cleanup = () => { delete window[cbName]; if (script.parentNode) script.parentNode.removeChild(script); };
+    window[cbName] = (data) => { cleanup(); resolve(data); };
+    script.onerror = () => { cleanup(); reject(new Error('JSONP failed')); };
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName + '&t=' + Date.now();
+    document.head.appendChild(script);
+  });
+}
+
 async function fetchAdminData() {
   const url = getApiUrl();
   if (!url) return {};
-  try {
-    const resp = await fetch(url + '?t=' + Date.now());
-    if (!resp.ok) return {};
-    return await resp.json();
-  } catch(e) { console.warn('Admin fetch failed:', e); return {}; }
+  try { return await jsonpFetch(url); }
+  catch(e) { console.warn('Admin fetch failed:', e); return {}; }
 }
 
 let _syncTimer = null;
@@ -293,7 +303,8 @@ function syncAdminData() {
     const url = getApiUrl();
     if (!url) return;
     try {
-      await fetch(url, { method: 'POST', body: JSON.stringify(adminData) });
+      // no-cors: browser sends the POST but treats response as opaque — write still reaches Apps Script
+      await fetch(url, { method: 'POST', body: JSON.stringify(adminData), mode: 'no-cors' });
     } catch(e) { console.warn('Admin sync failed:', e); }
   }, 600);
 }
@@ -1344,16 +1355,12 @@ async function saveApiUrl() {
   if (!url) { statusEl.textContent = 'URL cleared — using browser storage only.'; return; }
   statusEl.textContent = 'Testing connection…';
   try {
-    const resp = await fetch(url + '?t=' + Date.now());
-    if (resp.ok) {
-      adminData = await resp.json();
-      statusEl.textContent = '✓ Connected! Data loaded from Google Sheets.';
-      showToast('Connected to Google Sheets!');
-    } else {
-      statusEl.textContent = '✗ URL returned an error. Check your Apps Script deployment.';
-    }
+    const data = await jsonpFetch(url);
+    adminData = data;
+    statusEl.textContent = '✓ Connected! Data loaded from Google Sheets.';
+    showToast('Connected to Google Sheets!');
   } catch(e) {
-    statusEl.textContent = '✗ Could not connect. Check the URL and deployment settings.';
+    statusEl.textContent = '✗ Could not connect. Make sure you updated the Apps Script with the new version (with JSONP support) and redeployed.';
   }
 }
 
