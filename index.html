@@ -673,9 +673,10 @@ function showOverview() {
     const leadsYear = Object.keys(leads).filter(k=>k.endsWith('__'+activeYear)).reduce((s,k)=>s+(parseInt(leads[k])||0),0);
     // Budget tracking
     const budgets = getBudgetsLS();
+    const sponsBudgets = getSponsBudgets();
     const confKeysInYear = [...new Set(displayData.map(r=>r.confKey))];
-    const budgetedConfs = confKeysInYear.filter(k=>parseFloat(budgets[k]||0)>0);
-    const totalBudget = budgetedConfs.reduce((s,k)=>s+(parseFloat(budgets[k])||0),0);
+    const budgetedConfs = confKeysInYear.filter(k=>parseFloat(budgets[k]||0)>0||parseFloat(sponsBudgets[k+'__'+activeYear]||0)>0);
+    const totalBudget = budgetedConfs.reduce((s,k)=>(s+(parseFloat(budgets[k])||0)+(parseFloat(sponsBudgets[k+'__'+activeYear])||0)),0);
     const budgetedNet = budgetedConfs.reduce((s,k)=>{
       const rows = displayData.filter(r=>r.confKey===k);
       const spend = rows.reduce((rs,r)=>rs+r.total,0);
@@ -742,7 +743,8 @@ function showOverview() {
         </tr></thead>
         <tbody id="overviewTbody">${confs.map(c=>{
           const budgets = getBudgetsLS();
-          const confBudget = parseFloat(budgets[c.key]||0);
+          const sponsBudgets = getSponsBudgets();
+          const confBudget = (parseFloat(budgets[c.key]||0)) + (parseFloat(sponsBudgets[c.key+'__'+activeYear]||0));
           if (activeYear) {
             const yearRows = c.rows.filter(r=>r.year===activeYear);
             const yearSpend = yearRows.reduce((s,r)=>s+r.total,0);
@@ -780,11 +782,12 @@ function showOverview() {
         }).join('')}</tbody>
         <tfoot>${(() => {
           const budgets = getBudgetsLS();
+          const sponsBudgets = getSponsBudgets();
           if (activeYear) {
             const totSpend = confs.reduce((s,c)=>s+c.rows.filter(r=>r.year===activeYear).reduce((a,r)=>a+r.total,0),0);
             const totSpons = confs.reduce((s,c)=>s+(parseFloat(sponsorships[c.key+'__'+activeYear]||0)),0);
             const totNet = totSpend + totSpons;
-            const totBudget = confs.reduce((s,c)=>s+(parseFloat(budgets[c.key]||0)),0);
+            const totBudget = confs.reduce((s,c)=>s+(parseFloat(budgets[c.key]||0))+(parseFloat(sponsBudgets[c.key+'__'+activeYear]||0)),0);
             const totLeads = confs.reduce((s,c)=>s+(parseInt(leads[c.key+'__'+activeYear]||0)),0);
             const totDelta = totBudget > 0 ? totBudget - totNet : null;
             const deltaColor = totDelta===null?'var(--muted)':totDelta>=0?'var(--green)':'var(--red)';
@@ -827,12 +830,14 @@ function showConf(key) {
   const years = [...conf.years].sort();
   const totalAll = rows.reduce((s,r)=>s+r.total,0);
   const budgets = getBudgetsLS();
-  const budget = budgets[key] || 0;
+  const sponsBudgets = getSponsBudgets();
   const sponsorships = getSponsorships();
   // Get most recent year sponsorship
   const lastYear = years[years.length-1];
   const sponsKey = key + '__' + lastYear;
   const spons = parseFloat(sponsorships[sponsKey]) || 0;
+  const sponsBudget = parseFloat(sponsBudgets[sponsKey]) || 0;
+  const budget = (parseFloat(budgets[key]) || 0) + sponsBudget;
   const attendees = [...new Set(rows.map(r=>r.attendee))];
   const byYear = years.map(y=>({year:y, total:totalByYear(rows,y), rows:rows.filter(r=>r.year===y)}));
   const totFees = rows.reduce((s,r)=>s+r.fees,0);
