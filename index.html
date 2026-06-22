@@ -1322,9 +1322,58 @@ function renderAdminSettingsTab(body) {
       <div id="passMsg" style="font-size:12px;margin-top:8px;min-height:18px;"></div>
     </div>
     <div class="admin-section" style="margin-top:24px;">
-      <h3>&#9989; Sync Status</h3>
-      <p style="font-size:13px;">All admin changes (budgets, sponsorships, leads, marketing, credentials) sync automatically across all devices. No additional setup required.</p>
+      <h3>&#128268; Connection Test</h3>
+      <p style="font-size:13px;">Test whether the dashboard can read from and write to the cloud storage.</p>
+      <button onclick="testJsonbin()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">Run Test</button>
+      <div id="jsonbinTestResult" style="font-size:12px;margin-top:10px;line-height:1.8;white-space:pre-wrap;font-family:monospace;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;display:none;"></div>
     </div>`;
+}
+
+async function testJsonbin() {
+  const el = document.getElementById('jsonbinTestResult');
+  el.style.display = 'block';
+  el.textContent = 'Testing...\n';
+  let log = '';
+  const addLog = (msg) => { log += msg + '\n'; el.textContent = log; };
+
+  // Test READ
+  try {
+    addLog('1. Testing READ from JSONbin...');
+    const resp = await fetch(JSONBIN_URL + '/latest', { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    addLog('   HTTP status: ' + resp.status + ' ' + resp.statusText);
+    if (resp.ok) {
+      const json = await resp.json();
+      addLog('   ✓ READ succeeded. Keys in record: ' + Object.keys(json.record||{}).join(', ') || '(empty)');
+    } else {
+      const txt = await resp.text();
+      addLog('   ✗ READ failed: ' + txt.substring(0,200));
+    }
+  } catch(e) {
+    addLog('   ✗ READ threw error: ' + e.message);
+  }
+
+  // Test WRITE
+  try {
+    addLog('2. Testing WRITE to JSONbin...');
+    const testData = { ...adminData, _test: Date.now() };
+    const resp = await fetch(JSONBIN_URL, {
+      method: 'PUT',
+      headers: { 'X-Master-Key': JSONBIN_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(testData)
+    });
+    addLog('   HTTP status: ' + resp.status + ' ' + resp.statusText);
+    if (resp.ok) {
+      addLog('   ✓ WRITE succeeded.');
+      adminData = testData;
+    } else {
+      const txt = await resp.text();
+      addLog('   ✗ WRITE failed: ' + txt.substring(0,200));
+    }
+  } catch(e) {
+    addLog('   ✗ WRITE threw error: ' + e.message);
+  }
+
+  addLog('\nDone. Share these results to get help diagnosing the issue.');
 }
 
 async function changeCredentials() {
