@@ -1630,8 +1630,8 @@ function viewConfPDF(key) {
     if (potPartners.length) {
       html += `<div class="sec">Potential Partners (${potPartners.length})</div>`;
       potPartners.forEach(p => {
-        const cName = (p.match(/Contact Name:\s*([^\n]+)/)||[])[1]?.trim()||'';
-        const org = (p.match(/Partner Affiliation:\s*([^\n]+)/)||[])[1]?.trim()||'';
+        const cName = (p.match(/Contact Name:\s*(.*?)(?=\s+Partner Affiliation:|\s+Notes\/Details:|$)/)||[])[1]?.trim()||'';
+        const org = (p.match(/Partner Affiliation:\s*(.*?)(?=\s+Notes\/Details:|$)/)||[])[1]?.trim()||'';
         const notes = (p.match(/Notes\/Details:\s*([\s\S]*)/)||[])[1]?.trim()||'';
         html += `<div class="partner-card">
           ${cName?`<div class="partner-name">${cName}</div>`:''}
@@ -1646,8 +1646,8 @@ function viewConfPDF(key) {
     if (curPartners.length) {
       html += `<div class="sec">Current Partners Contacted (${curPartners.length})</div>`;
       curPartners.forEach(p => {
-        const cName = (p.match(/Contact Name:\s*([^\n]+)/)||[])[1]?.trim()||'';
-        const org = (p.match(/Partner Affiliation:\s*([^\n]+)/)||[])[1]?.trim()||'';
+        const cName = (p.match(/Contact Name:\s*(.*?)(?=\s+Partner Affiliation:|\s+Notes\/Details:|$)/)||[])[1]?.trim()||'';
+        const org = (p.match(/Partner Affiliation:\s*(.*?)(?=\s+Notes\/Details:|$)/)||[])[1]?.trim()||'';
         const notes = (p.match(/Notes\/Details:\s*([\s\S]*)/)||[])[1]?.trim()||'';
         html += `<div class="partner-card" style="border-left-color:#059669;">
           ${cName?`<div class="partner-name">${cName}</div>`:''}
