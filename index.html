@@ -269,9 +269,11 @@ let RAW = [
 // ─── ADMIN DATA + GOOGLE SHEETS SYNC ─────────────────────────
 // Default credentials: username "zach", password "fpm2025"
 const DEFAULT_CREDENTIALS = [{ username: 'zach', passwordHash: 'e88a28a3c4229e0d46820e2645b23404a550f3e20720c81e33448913a5ad06b7' }];
+// Hardcoded Apps Script URL — syncs admin data across all devices automatically
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbzOn1agdplcyqp5YEOely6PvVSrQAAOSwBokS75Th3i03dXBfsYiqiyru6IsdRM04VH/exec';
 let adminData = {}; // loaded from Apps Script on login; keys: credentials[], sponsorships, budgets, leads, nameOverrides, marketing
 
-function getApiUrl() { return localStorage.getItem('fpm_api_url') || ''; }
+function getApiUrl() { return localStorage.getItem('fpm_api_url') || DEFAULT_API_URL; }
 function setApiUrl(url) { localStorage.setItem('fpm_api_url', url.trim()); }
 
 async function sha256(str) {
