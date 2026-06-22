@@ -265,52 +265,38 @@ let RAW = [
 {"year":2026,"attendee":"Chris Goulard","conference":"XP Summit","location":"Colleyville, TX","dates":"May 4-6, 2026","type":"Employee (Full-Time)","managed":"Yes","fees":0,"expenses":2228.26,"total":2228.26,"mileage":0,"airTravel":1060.8,"meals":122.47,"expenseNotes":"","feeNotes":"","summary":"~150 XPs, mix of different church sizes. Kevin Bates and I hosted dinner for several XPs. Good interaction with people on breaks. Several churches knew about us from CDF.","suggestions":"Next year may coincide with ICCON. Will coordinate with Dave for coverage."}
 ];
 
-// ─── LOCALSTORAGE HELPERS ─────────────────────────────────────
-// ─── ADMIN DATA + GOOGLE SHEETS SYNC ─────────────────────────
-// Default credentials: username "zach", password "fpm2025"
+// ─── ADMIN DATA + JSONBIN SYNC ───────────────────────────────
 const DEFAULT_CREDENTIALS = [{ username: 'zach', passwordHash: 'e88a28a3c4229e0d46820e2645b23404a550f3e20720c81e33448913a5ad06b7' }];
-// Hardcoded Apps Script URL — syncs admin data across all devices automatically
-const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbzOn1agdplcyqp5YEOely6PvVSrQAAOSwBokS75Th3i03dXBfsYiqiyru6IsdRM04VH/exec';
-let adminData = {}; // loaded from Apps Script on login; keys: credentials[], sponsorships, budgets, leads, nameOverrides, marketing
-
-function getApiUrl() { return localStorage.getItem('fpm_api_url') || DEFAULT_API_URL; }
-function setApiUrl(url) { localStorage.setItem('fpm_api_url', url.trim()); }
+const JSONBIN_URL = 'https://api.jsonbin.io/v3/b/6a39bc2fda38895dfeee5774';
+const JSONBIN_KEY = '$2a$10$P9BDLhFowPiesvFrpGu.MeHbrCkV//MqMZHbhp240BHHD4qK1yqYi';
+let adminData = {};
 
 async function sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-// JSONP fetch — bypasses CORS for reading from Apps Script
-function jsonpFetch(url) {
-  return new Promise((resolve, reject) => {
-    const cbName = '_apsCb_' + Date.now();
-    const script = document.createElement('script');
-    const cleanup = () => { delete window[cbName]; if (script.parentNode) script.parentNode.removeChild(script); };
-    window[cbName] = (data) => { cleanup(); resolve(data); };
-    script.onerror = () => { cleanup(); reject(new Error('JSONP failed')); };
-    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName + '&t=' + Date.now();
-    document.head.appendChild(script);
-  });
-}
-
 async function fetchAdminData() {
-  const url = getApiUrl();
-  if (!url) return {};
-  try { return await jsonpFetch(url); }
-  catch(e) { console.warn('Admin fetch failed:', e); return {}; }
+  try {
+    const resp = await fetch(JSONBIN_URL + '/latest', {
+      headers: { 'X-Master-Key': JSONBIN_KEY }
+    });
+    if (!resp.ok) return {};
+    const json = await resp.json();
+    return json.record || {};
+  } catch(e) { console.warn('Admin fetch failed:', e); return {}; }
 }
 
 let _syncTimer = null;
 function syncAdminData() {
-  // Debounce to avoid rapid-fire POSTs
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(async () => {
-    const url = getApiUrl();
-    if (!url) return;
     try {
-      // no-cors: browser sends the POST but treats response as opaque — write still reaches Apps Script
-      await fetch(url, { method: 'POST', body: JSON.stringify(adminData), mode: 'no-cors' });
+      await fetch(JSONBIN_URL, {
+        method: 'PUT',
+        headers: { 'X-Master-Key': JSONBIN_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(adminData)
+      });
     } catch(e) { console.warn('Admin sync failed:', e); }
   }, 600);
 }
@@ -1320,23 +1306,12 @@ function deleteMarketingItem(idx) {
   renderAdminMarketingTab(document.getElementById('adminBody'));
 }
 
-// ─── SETTINGS TAB ─────────────────────────────────────────────
+// ─── SETTINGS TAB ────────────────────────────────────────────
 function renderAdminSettingsTab(body) {
-  const url = getApiUrl();
   body.innerHTML = `
     <div class="admin-section">
-      <h3>Google Sheets Backend</h3>
-      <p>Paste your Google Apps Script web app URL here so admin changes (budgets, sponsorships, leads, marketing) sync across all devices. <strong>Leave blank to use browser-only storage.</strong></p>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-        <input id="apiUrlInput" type="url" value="${url}" placeholder="https://script.google.com/macros/s/…/exec"
-          style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);">
-        <button onclick="saveApiUrl()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">Save URL</button>
-      </div>
-      <div id="apiStatus" style="font-size:12px;color:var(--muted);min-height:18px;">${url ? '✓ URL configured — data syncing to Google Sheets.' : 'No URL set — data stored in this browser only.'}</div>
-    </div>
-    <div class="admin-section" style="margin-top:24px;">
-      <h3>Change Login Credentials</h3>
-      <p>Update your username and/or password. Changes sync to Google Sheets immediately.</p>
+      <h3>&#128275; Change Login Credentials</h3>
+      <p>Update your username and/or password. Changes sync across all devices automatically.</p>
       <div style="display:grid;gap:8px;max-width:320px;">
         <div style="font-size:11px;font-weight:700;color:var(--muted);">CURRENT USERNAME: <strong style="color:var(--text)">${sessionStorage.getItem('fpm_user')||'zach'}</strong></div>
         <input id="newUser" type="text" placeholder="New username (leave blank to keep)" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);">
@@ -1347,32 +1322,9 @@ function renderAdminSettingsTab(body) {
       <div id="passMsg" style="font-size:12px;margin-top:8px;min-height:18px;"></div>
     </div>
     <div class="admin-section" style="margin-top:24px;">
-      <h3>Setup Instructions</h3>
-      <p>To enable cross-device sync, set up a Google Apps Script web app:</p>
-      <ol style="font-size:13px;line-height:1.8;color:var(--text);padding-left:20px;">
-        <li>Open your Google Sheet → <strong>Extensions → Apps Script</strong></li>
-        <li>Paste the Apps Script code (ask your admin for the file)</li>
-        <li>Click <strong>Deploy → New Deployment → Web App</strong></li>
-        <li>Set "Execute as" = <strong>Me</strong>, "Who has access" = <strong>Anyone</strong></li>
-        <li>Copy the web app URL and paste it above</li>
-      </ol>
+      <h3>&#9989; Sync Status</h3>
+      <p style="font-size:13px;">All admin changes (budgets, sponsorships, leads, marketing, credentials) sync automatically across all devices. No additional setup required.</p>
     </div>`;
-}
-
-async function saveApiUrl() {
-  const url = document.getElementById('apiUrlInput').value.trim();
-  setApiUrl(url);
-  const statusEl = document.getElementById('apiStatus');
-  if (!url) { statusEl.textContent = 'URL cleared — using browser storage only.'; return; }
-  statusEl.textContent = 'Testing connection…';
-  try {
-    const data = await jsonpFetch(url);
-    adminData = data;
-    statusEl.textContent = '✓ Connected! Data loaded from Google Sheets.';
-    showToast('Connected to Google Sheets!');
-  } catch(e) {
-    statusEl.textContent = '✗ Could not connect. Make sure you updated the Apps Script with the new version (with JSONP support) and redeployed.';
-  }
 }
 
 async function changeCredentials() {
