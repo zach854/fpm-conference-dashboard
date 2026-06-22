@@ -303,10 +303,11 @@ function syncAdminData() {
 
 // localStorage helpers — read from adminData first, fall back to localStorage
 const _adKeyMap = {
-  'fpm_name_overrides': 'nameOverrides',
-  'fpm_sponsorships':   'sponsorships',
-  'fpm_budgets':        'budgets',
-  'fpm_leads':          'leads'
+  'fpm_name_overrides':  'nameOverrides',
+  'fpm_sponsorships':    'sponsorships',
+  'fpm_spons_budgets':   'sponsorshipBudgets',
+  'fpm_budgets':         'budgets',
+  'fpm_leads':           'leads'
 };
 function lsGet(key, def={}) {
   const adKey = _adKeyMap[key];
@@ -323,6 +324,8 @@ function getNameOverrides() { return lsGet('fpm_name_overrides', {}); }
 function saveNameOverrides(v) { lsSet('fpm_name_overrides', v); }
 function getSponsorships() { return lsGet('fpm_sponsorships', {}); }
 function saveSponsorships(v) { lsSet('fpm_sponsorships', v); }
+function getSponsBudgets() { return lsGet('fpm_spons_budgets', {}); }
+function saveSponsBudgets(v) { lsSet('fpm_spons_budgets', v); }
 function getBudgetsLS() { return lsGet('fpm_budgets', {}); }
 function saveBudgetsLS(v) { lsSet('fpm_budgets', v); }
 
@@ -1163,34 +1166,47 @@ function renderAdminSponsTab(body) {
     return m;
   },{})).sort((a,b)=>a.key.localeCompare(b.key));
   const sponsorships = getSponsorships();
+  const sponsBudgets = getSponsBudgets();
   body.innerHTML = `
     <div class="admin-section">
       <h3>Conference Sponsorship Fees</h3>
-      <p>Enter the sponsorship fee FPM paid to each conference. This is added to the total cost. Click Save on each row to store the value — it will persist until you update it again.</p>
-      <table style="max-width:600px">
-        <thead><tr><th>Conference</th><th>Year</th><th class="money">Sponsorship Amount</th></tr></thead>
+      <p>Track the budgeted and actual sponsorship fee FPM paid to each conference.</p>
+      <table style="width:100%;max-width:760px;border-collapse:collapse;">
+        <thead><tr>
+          <th style="text-align:left;padding:7px 10px;border-bottom:2px solid var(--border);">Conference</th>
+          <th style="text-align:center;padding:7px 10px;border-bottom:2px solid var(--border);">Year</th>
+          <th style="text-align:right;padding:7px 10px;border-bottom:2px solid var(--border);">Budgeted</th>
+          <th style="text-align:right;padding:7px 10px;border-bottom:2px solid var(--border);">Actual</th>
+          <th style="padding:7px 10px;border-bottom:2px solid var(--border);"></th>
+        </tr></thead>
         <tbody>
           ${allConfs.map(c => [...c.years].sort().map(yr => {
             const sk = c.key + '__' + yr;
-            const val = sponsorships[sk] || '';
+            const safeId = (c.key+yr).replace(/[^a-z0-9]/gi,'_');
+            const actual = sponsorships[sk] || '';
+            const budget = sponsBudgets[sk] || '';
             return `<tr>
-              <td>${c.key}</td>
-              <td><span class="badge b${String(yr).slice(-2)}">${yr}</span></td>
-              <td class="money" style="display:flex;align-items:center;gap:6px;justify-content:flex-end"><input type="number" placeholder="0.00" value="${val}" id="si_${(c.key+yr).replace(/[^a-z0-9]/gi,'_')}" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:110px;"><button class="btn btn-primary" data-key="${c.key}" data-yr="${yr}" style="padding:3px 10px;font-size:12px" onclick="saveSponsorship(this.dataset.key,this.dataset.yr,document.getElementById('si_${(c.key+yr).replace(/[^a-z0-9]/gi,'_')}').value);this.textContent='Saved ✓';setTimeout(()=>this.textContent='Save',1500)">Save</button></td>
+              <td style="padding:6px 10px;border-bottom:1px solid var(--border);">${c.key}</td>
+              <td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;"><span class="badge b${String(yr).slice(-2)}">${yr}</span></td>
+              <td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;"><input type="number" placeholder="0.00" value="${budget}" id="sb_${safeId}" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:110px;"></td>
+              <td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;"><input type="number" placeholder="0.00" value="${actual}" id="si_${safeId}" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:110px;"></td>
+              <td style="padding:6px 10px;border-bottom:1px solid var(--border);"><button class="btn btn-primary" data-key="${c.key}" data-yr="${yr}" data-sid="si_${safeId}" data-bid="sb_${safeId}" style="padding:3px 10px;font-size:12px;white-space:nowrap" onclick="saveSponsorship(this.dataset.key,this.dataset.yr,document.getElementById(this.dataset.sid).value,document.getElementById(this.dataset.bid).value);this.textContent='Saved ✓';setTimeout(()=>this.textContent='Save',1500)">Save</button></td>
             </tr>`;
           }).join('')).join('')}
         </tbody>
       </table>
-      <p style="margin-top:12px;font-size:12px;color:var(--muted)">Changes are saved automatically as you type.</p>
     </div>`;
 }
 
-function saveSponsorship(key, year, val) {
-  const amount = parseFloat(val) || 0;
+function saveSponsorship(key, year, actual, budget) {
+  const amt = parseFloat(actual) || 0;
+  const bgt = parseFloat(budget) || 0;
   const s = getSponsorships();
-  if (amount === 0) delete s[key + '__' + year];
-  else s[key + '__' + year] = amount;
+  if (amt === 0) delete s[key + '__' + year]; else s[key + '__' + year] = amt;
   saveSponsorships(s);
+  const b = getSponsBudgets();
+  if (bgt === 0) delete b[key + '__' + year]; else b[key + '__' + year] = bgt;
+  saveSponsBudgets(b);
   showToast('Sponsorship saved!');
   buildSidebar();
 }
@@ -1252,7 +1268,11 @@ function renderAdminMarketingTab(body) {
           <input id="mktDesc" type="text" placeholder="e.g. Brochures, Banner, Table Cloth…" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:240px;">
         </div>
         <div>
-          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;">AMOUNT ($)</div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;">BUDGETED ($)</div>
+          <input id="mktBudget" type="number" min="0" step="0.01" placeholder="0.00" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:110px;text-align:right;">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;">ACTUAL ($)</div>
           <input id="mktAmt" type="number" min="0" step="0.01" placeholder="0.00" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:110px;text-align:right;">
         </div>
         <div>
@@ -1272,15 +1292,17 @@ function renderAdminMarketingTab(body) {
       ${items.length === 0 ? '<p style="color:var(--muted);font-size:13px;">No marketing items added yet.</p>' : `
       <table style="width:100%;border-collapse:collapse;font-size:13px;">
         <thead><tr>
-          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;">Description</th>
-          <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;">Amount</th>
-          <th style="text-align:center;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;">Year</th>
-          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;">Conference</th>
-          <th style="padding:6px 8px;border-bottom:1px solid var(--border);"></th>
+          <th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--muted);font-weight:600;">Description</th>
+          <th style="text-align:right;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--muted);font-weight:600;">Budgeted</th>
+          <th style="text-align:right;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--muted);font-weight:600;">Actual</th>
+          <th style="text-align:center;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--muted);font-weight:600;">Year</th>
+          <th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--muted);font-weight:600;">Conference</th>
+          <th style="padding:6px 8px;border-bottom:2px solid var(--border);"></th>
         </tr></thead>
         <tbody>
           ${items.map((item,i) => `<tr>
             <td style="padding:6px 8px;border-bottom:1px solid var(--border);">${item.desc}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;color:var(--muted);">${item.budget>0?'$'+parseFloat(item.budget).toFixed(2):'—'}</td>
             <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-weight:600;">$${parseFloat(item.amount).toFixed(2)}</td>
             <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;"><span class="badge b${String(item.year).slice(-2)}">${item.year}</span></td>
             <td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);">${item.conference}</td>
@@ -1289,6 +1311,7 @@ function renderAdminMarketingTab(body) {
         </tbody>
         <tfoot><tr>
           <td style="padding:8px;font-weight:700;border-top:2px solid var(--border);">Total</td>
+          <td style="padding:8px;text-align:right;border-top:2px solid var(--border);color:var(--muted);">$${items.reduce((s,i)=>s+(parseFloat(i.budget)||0),0).toFixed(2)}</td>
           <td style="padding:8px;font-weight:700;text-align:right;border-top:2px solid var(--border);">$${items.reduce((s,i)=>s+(parseFloat(i.amount)||0),0).toFixed(2)}</td>
           <td colspan="3" style="border-top:2px solid var(--border);"></td>
         </tr></tfoot>
@@ -1297,13 +1320,14 @@ function renderAdminMarketingTab(body) {
 }
 
 function addMarketingItem() {
-  const desc = document.getElementById('mktDesc').value.trim();
-  const amt  = parseFloat(document.getElementById('mktAmt').value) || 0;
-  const yr   = parseInt(document.getElementById('mktYear').value);
-  const conf = document.getElementById('mktConf').value;
-  if (!desc || !amt) { showToast('Enter a description and amount.'); return; }
+  const desc   = document.getElementById('mktDesc').value.trim();
+  const amt    = parseFloat(document.getElementById('mktAmt').value) || 0;
+  const budget = parseFloat(document.getElementById('mktBudget').value) || 0;
+  const yr     = parseInt(document.getElementById('mktYear').value);
+  const conf   = document.getElementById('mktConf').value;
+  if (!desc || !amt) { showToast('Enter a description and actual amount.'); return; }
   const items = getMarketing();
-  items.push({ id: Date.now().toString(), desc, amount: amt, year: yr, conference: conf });
+  items.push({ id: Date.now().toString(), desc, budget, amount: amt, year: yr, conference: conf });
   saveMarketing(items);
   showToast('Item added!');
   renderAdminMarketingTab(document.getElementById('adminBody'));
