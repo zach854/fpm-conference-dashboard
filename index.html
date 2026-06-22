@@ -744,7 +744,7 @@ function showOverview() {
         <tbody id="overviewTbody">${confs.map(c=>{
           const budgets = getBudgetsLS();
           const sponsBudgets = getSponsBudgets();
-          const confBudget = (parseFloat(budgets[c.key]||0)) + (parseFloat(sponsBudgets[c.key+'__'+activeYear]||0));
+          const confBudget = (parseFloat(budgets[c.key+'__'+activeYear]||0)) + (parseFloat(sponsBudgets[c.key+'__'+activeYear]||0));
           if (activeYear) {
             const yearRows = c.rows.filter(r=>r.year===activeYear);
             const yearSpend = yearRows.reduce((s,r)=>s+r.total,0);
@@ -787,7 +787,7 @@ function showOverview() {
             const totSpend = confs.reduce((s,c)=>s+c.rows.filter(r=>r.year===activeYear).reduce((a,r)=>a+r.total,0),0);
             const totSpons = confs.reduce((s,c)=>s+(parseFloat(sponsorships[c.key+'__'+activeYear]||0)),0);
             const totNet = totSpend + totSpons;
-            const totBudget = confs.reduce((s,c)=>s+(parseFloat(budgets[c.key]||0))+(parseFloat(sponsBudgets[c.key+'__'+activeYear]||0)),0);
+            const totBudget = confs.reduce((s,c)=>s+(parseFloat(budgets[c.key+'__'+activeYear]||0))+(parseFloat(sponsBudgets[c.key+'__'+activeYear]||0)),0);
             const totLeads = confs.reduce((s,c)=>s+(parseInt(leads[c.key+'__'+activeYear]||0)),0);
             const totDelta = totBudget > 0 ? totBudget - totNet : null;
             const deltaColor = totDelta===null?'var(--muted)':totDelta>=0?'var(--green)':'var(--red)';
@@ -837,7 +837,8 @@ function showConf(key) {
   const sponsKey = key + '__' + lastYear;
   const spons = parseFloat(sponsorships[sponsKey]) || 0;
   const sponsBudget = parseFloat(sponsBudgets[sponsKey]) || 0;
-  const budget = (parseFloat(budgets[key]) || 0) + sponsBudget;
+  const budgetYear = activeYear || lastYear;
+  const budget = (parseFloat(budgets[key + '__' + budgetYear]) || 0) + (parseFloat(sponsBudgets[key + '__' + budgetYear]) || 0);
   const attendees = [...new Set(rows.map(r=>r.attendee))];
   const byYear = years.map(y=>({year:y, total:totalByYear(rows,y), rows:rows.filter(r=>r.year===y)}));
   const totFees = rows.reduce((s,r)=>s+r.fees,0);
@@ -1443,36 +1444,44 @@ async function changeCredentials() {
 function renderAdminBudgetsTab(body) {
   const DATA = getData();
   const allConfs = Object.values(DATA.reduce((m,r)=>{
-    if(!m[r.confKey]) m[r.confKey]={key:r.confKey};
+    if(!m[r.confKey]) m[r.confKey]={key:r.confKey,years:new Set()};
+    m[r.confKey].years.add(r.year);
     return m;
-  },{}));
-  allConfs.sort((a,b)=>a.key.localeCompare(b.key));
+  },{})).sort((a,b)=>a.key.localeCompare(b.key));
   const budgets = getBudgetsLS();
   body.innerHTML = `
     <div class="admin-section">
       <h3>Annual Budgets</h3>
-      <p>Set a budget per conference. This is compared against the most recent year's net cost (after sponsorships) on the conference detail page.</p>
-      <table style="max-width:500px">
-        <thead><tr><th>Conference</th><th class="money">Annual Budget</th></tr></thead>
+      <p>Set a budget per conference per year. Used to track whether spending is on target.</p>
+      <table style="width:100%;max-width:560px;border-collapse:collapse;">
+        <thead><tr>
+          <th style="text-align:left;padding:7px 10px;border-bottom:2px solid var(--border);">Conference</th>
+          <th style="text-align:center;padding:7px 10px;border-bottom:2px solid var(--border);">Year</th>
+          <th style="text-align:right;padding:7px 10px;border-bottom:2px solid var(--border);">Budget</th>
+          <th style="padding:7px 10px;border-bottom:2px solid var(--border);"></th>
+        </tr></thead>
         <tbody>
-          ${allConfs.map(c => {
-            const val = budgets[c.key] || '';
+          ${allConfs.map(c => [...c.years].sort().map(yr => {
+            const bk = c.key + '__' + yr;
+            const val = budgets[bk] || '';
+            const safeId = 'bi_' + (c.key+yr).replace(/[^a-z0-9]/gi,'_');
             return `<tr>
-              <td>${c.key}</td>
-              <td class="money"><input type="number" placeholder="0.00" value="${val}" onchange="saveBudgetAdmin('${c.key.replace(/'/g,"\\'")}', this.value)" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:130px;"></td>
+              <td style="padding:6px 10px;border-bottom:1px solid var(--border);">${c.key}</td>
+              <td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;"><span class="badge b${String(yr).slice(-2)}">${yr}</span></td>
+              <td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;"><input type="number" placeholder="0.00" value="${val}" id="${safeId}" style="text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:130px;"></td>
+              <td style="padding:6px 10px;border-bottom:1px solid var(--border);"><button class="btn btn-primary" data-key="${c.key}" data-yr="${yr}" data-iid="${safeId}" style="padding:3px 10px;font-size:12px;white-space:nowrap" onclick="saveBudgetAdmin(this.dataset.key,this.dataset.yr,document.getElementById(this.dataset.iid).value);this.textContent='Saved ✓';setTimeout(()=>this.textContent='Save',1500)">Save</button></td>
             </tr>`;
-          }).join('')}
+          }).join('')).join('')}
         </tbody>
       </table>
-      <p style="margin-top:12px;font-size:12px;color:var(--muted)">Changes are saved automatically. Budgets persist across sessions.</p>
     </div>`;
 }
 
-function saveBudgetAdmin(key, val) {
+function saveBudgetAdmin(key, year, val) {
   const amount = parseFloat(val) || 0;
   const b = getBudgetsLS();
-  if (amount === 0) delete b[key];
-  else b[key] = amount;
+  const bk = key + '__' + year;
+  if (amount === 0) delete b[bk]; else b[bk] = amount;
   saveBudgetsLS(b);
   showToast('Budget saved!');
 }
