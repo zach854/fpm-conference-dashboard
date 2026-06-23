@@ -954,7 +954,7 @@ function showConf(key) {
             <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600">Affiliation</th>
             <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600">Notes</th>
           </tr></thead>
-          <tbody>${curContacts.map(c=>'<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+c.name+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted)"></td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted)">'+c.attendee+' &middot; '+c.year+'</td></tr>').join('')}</tbody>
+          <tbody>${curContacts.map(c=>{const _cn=(c.name.match(/Contact Name:\s*(.*?)(?=\s+Partner Affiliation:|\s+Notes\/Details:|$)/)||[])[1]?.trim()||c.name;const _org=(c.name.match(/Partner Affiliation:\s*(.*?)(?=\s+Notes\/Details:|$)/)||[])[1]?.trim()||'';const _notes=(c.name.match(/Notes\/Details:\s*([\s\S]*)/)||[])[1]?.trim()||'';return '<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+_cn+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted)">'+_org+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted)">'+(_notes||c.attendee+' · '+c.year)+'</td></tr>';}).join('')}</tbody>
         </table>` : '<div style="color:var(--muted);font-size:13px">None recorded.</div>'}
       </div>
       <div class="panel" style="overflow-x:auto">
@@ -965,7 +965,7 @@ function showConf(key) {
             <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600">Affiliation</th>
             <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600">Notes</th>
           </tr></thead>
-          <tbody>${potContacts.map(c=>'<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+c.name+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted)"></td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted)">'+c.attendee+' &middot; '+c.year+'</td></tr>').join('')}</tbody>
+          <tbody>${potContacts.map(c=>{const _cn=(c.name.match(/Contact Name:\s*(.*?)(?=\s+Partner Affiliation:|\s+Notes\/Details:|$)/)||[])[1]?.trim()||c.name;const _org=(c.name.match(/Partner Affiliation:\s*(.*?)(?=\s+Notes\/Details:|$)/)||[])[1]?.trim()||'';const _notes=(c.name.match(/Notes\/Details:\s*([\s\S]*)/)||[])[1]?.trim()||'';return '<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+_cn+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted)">'+_org+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted)">'+(_notes||c.attendee+' · '+c.year)+'</td></tr>';}).join('')}</tbody>
         </table>` : '<div style="color:var(--muted);font-size:13px">None recorded.</div>'}
       </div>
     </div>` : ''}
